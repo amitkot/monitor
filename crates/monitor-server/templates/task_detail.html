@@ -1,0 +1,163 @@
+{% extends "base.html" %}
+
+{% block title %}{{ task.name }} - Monitor{% endblock %}
+
+{% block content %}
+<p><a href="/dashboard">&larr; Dashboard</a></p>
+
+<div class="card">
+    <div class="card-header">
+        <h1>{{ task.name }}</h1>
+        <span class="badge badge-{{ task.status }}">{{ task.status }}</span>
+    </div>
+    <p style="color: var(--color-text-muted); font-size: 0.85rem;">
+        Workstream: <strong>{{ workstream_name }}</strong>
+    </p>
+
+    <!-- Status change -->
+    <form class="form-row" style="margin-top: 1rem;"
+          hx-patch="/api/tasks/{{ task.id }}"
+          hx-swap="none"
+          hx-headers='{"Content-Type": "application/json"}'
+          hx-ext="json-enc"
+          hx-on::after-request="if(event.detail.successful) window.location.reload()">
+        <div class="form-group">
+            <label>Change Status</label>
+            <select name="status">
+                <option value="active" {% if status_str == "active" %}selected{% endif %}>Active</option>
+                <option value="blocked" {% if status_str == "blocked" %}selected{% endif %}>Blocked</option>
+                <option value="done" {% if status_str == "done" %}selected{% endif %}>Done</option>
+                <option value="cancelled" {% if status_str == "cancelled" %}selected{% endif %}>Cancelled</option>
+            </select>
+        </div>
+        <button type="submit" class="btn btn-primary btn-sm">Update Status</button>
+    </form>
+
+    <!-- Summary inline edit -->
+    <form class="form-row" style="margin-top: 1rem;"
+          hx-patch="/api/tasks/{{ task.id }}"
+          hx-swap="none"
+          hx-headers='{"Content-Type": "application/json"}'
+          hx-ext="json-enc"
+          hx-on::after-request="if(event.detail.successful) window.location.reload()">
+        <div class="form-group" style="flex: 1;">
+            <label>Summary</label>
+            <textarea name="summary_text" placeholder="Task summary...">{% match task.summary_text %}{% when Some with (s) %}{{ s }}{% when None %}{% endmatch %}</textarea>
+        </div>
+        <button type="submit" class="btn btn-primary btn-sm">Save Summary</button>
+    </form>
+</div>
+
+<!-- Manual update form -->
+<div class="card">
+    <h2>Add Update</h2>
+    <form class="form-row"
+          hx-post="/api/updates/manual"
+          hx-swap="none"
+          hx-headers='{"Content-Type": "application/json"}'
+          hx-ext="json-enc"
+          hx-on::after-request="if(event.detail.successful) window.location.reload()">
+        <input type="hidden" name="task_id" value="{{ task.id }}">
+        <div class="form-group" style="flex: 1;">
+            <label>Message</label>
+            <input type="text" name="message" placeholder="What happened?" required>
+        </div>
+        <button type="submit" class="btn btn-primary">Post Update</button>
+    </form>
+</div>
+
+<!-- Update thread -->
+<div class="card">
+    <h2>Updates</h2>
+    <ul class="update-thread" id="update-thread">
+        {% for update in updates %}
+        {% include "_update_item.html" %}
+        {% endfor %}
+    </ul>
+    {% if updates.is_empty() %}
+    <p style="color: var(--color-text-muted); font-size: 0.9rem;">No updates yet.</p>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+(function() {
+    var taskId = "{{ task.id }}";
+    var source = new EventSource('/api/stream?task_id=' + taskId);
+
+    source.onerror = function() {
+        console.warn('SSE connection lost, browser will retry automatically');
+    };
+    window.addEventListener('beforeunload', function() { source.close(); });
+
+    function escapeHtml(text) {
+        var div = document.createElement('div');
+        div.textContent = text;
+        return div.textContent;
+    }
+
+    source.addEventListener('update', function(e) {
+        try {
+            var update = JSON.parse(e.data);
+            var thread = document.getElementById('update-thread');
+            if (!thread) return;
+
+            var li = document.createElement('li');
+            li.className = 'update-item';
+
+            // Build meta section safely with DOM methods
+            var metaDiv = document.createElement('div');
+            metaDiv.className = 'update-meta';
+
+            var tsSpan = document.createElement('span');
+            tsSpan.textContent = new Date(update.timestamp).toLocaleString();
+            metaDiv.appendChild(tsSpan);
+
+            var sourceStrong = document.createElement('strong');
+            sourceStrong.textContent = update.source;
+            metaDiv.appendChild(sourceStrong);
+
+            if (update.kind) {
+                var kindSpan = document.createElement('span');
+                kindSpan.className = 'badge badge-active';
+                kindSpan.textContent = update.kind;
+                metaDiv.appendChild(kindSpan);
+            }
+
+            if (update.level) {
+                var levelSpan = document.createElement('span');
+                levelSpan.className = 'badge level-' + escapeHtml(update.level);
+                levelSpan.textContent = update.level;
+                metaDiv.appendChild(levelSpan);
+            }
+
+            li.appendChild(metaDiv);
+
+            // Build message section safely
+            var msgDiv = document.createElement('div');
+            msgDiv.className = 'update-message';
+            msgDiv.textContent = update.message;
+            li.appendChild(msgDiv);
+
+            thread.prepend(li);
+
+            // Remove "No updates yet" message if present
+            var noUpdates = thread.parentElement.querySelector('p');
+            if (noUpdates && noUpdates.textContent.indexOf('No updates yet') !== -1) {
+                noUpdates.remove();
+            }
+        } catch(err) {
+            console.error('Failed to parse SSE update:', err);
+        }
+    });
+
+    function reloadTaskPage() {
+        window.location.reload();
+    }
+
+    source.addEventListener('task_updated', reloadTaskPage);
+    source.addEventListener('task_created', reloadTaskPage);
+})();
+</script>
+{% endblock %}

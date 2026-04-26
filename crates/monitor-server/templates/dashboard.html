@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Monitor{% endblock %}
+
+{% block content %}
+<h1>Dashboard</h1>
+
+<!-- Create Workstream -->
+<div class="card">
+    <h3>Create Workstream</h3>
+    <form class="form-row"
+          hx-post="/api/workstreams"
+          hx-swap="none"
+          hx-headers='{"Content-Type": "application/json"}'
+          hx-ext="json-enc"
+          hx-on::after-request="if(event.detail.successful) window.location.reload()">
+        <div class="form-group">
+            <label for="ws-name">Name</label>
+            <input type="text" id="ws-name" name="name" placeholder="Workstream name" required>
+        </div>
+        <button type="submit" class="btn btn-primary">Create</button>
+    </form>
+</div>
+
+{% if workstreams.is_empty() %}
+<div class="card">
+    <p style="color: var(--color-text-muted);">No active workstreams yet. Create one above.</p>
+</div>
+{% else %}
+{% for ws in workstreams %}
+<div class="card">
+    <div class="card-header">
+        <h2>{{ ws.workstream.name }}</h2>
+        <span class="badge badge-{{ ws.workstream.status }}">{{ ws.workstream.status }}</span>
+    </div>
+
+    {% if ws.tasks.is_empty() %}
+    <p style="color: var(--color-text-muted); font-size: 0.9rem;">No tasks yet.</p>
+    {% else %}
+    <ul class="task-list">
+        {% for task in ws.tasks %}
+        <li>
+            <span class="badge badge-{{ task.status }}">{{ task.status }}</span>
+            <a href="/tasks/{{ task.id }}">{{ task.name }}</a>
+            {% match task.summary_text %}
+                {% when Some with (summary) %}
+                <span class="task-summary" title="{{ summary }}">{{ summary }}</span>
+                {% when None %}
+            {% endmatch %}
+        </li>
+        {% endfor %}
+    </ul>
+    {% endif %}
+
+    <!-- Create Task form for this workstream -->
+    <form class="form-row"
+          hx-post="/api/tasks"
+          hx-swap="none"
+          hx-headers='{"Content-Type": "application/json"}'
+          hx-ext="json-enc"
+          hx-on::after-request="if(event.detail.successful) window.location.reload()">
+        <input type="hidden" name="workstream_id" value="{{ ws.workstream.id }}">
+        <div class="form-group">
+            <label>New Task</label>
+            <input type="text" name="name" placeholder="Task name" required>
+        </div>
+        <button type="submit" class="btn btn-primary btn-sm">Add Task</button>
+    </form>
+</div>
+{% endfor %}
+{% endif %}
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+(function() {
+    var source = new EventSource('/api/stream');
+
+    source.onerror = function() {
+        console.warn('SSE connection lost, browser will retry automatically');
+    };
+    window.addEventListener('beforeunload', function() { source.close(); });
+
+    function reloadDashboard() {
+        window.location.reload();
+    }
+
+    source.addEventListener('task_created', reloadDashboard);
+    source.addEventListener('task_updated', reloadDashboard);
+    source.addEventListener('workstream_created', reloadDashboard);
+    source.addEventListener('workstream_updated', reloadDashboard);
+})();
+</script>
+{% endblock %}

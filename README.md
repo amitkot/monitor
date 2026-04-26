@@ -1,1 +1,389 @@
 # Monitor
+
+Local-first development task monitoring system.
+
+Monitor aggregates task updates from humans, agents, and external systems into a task-centric dashboard and API. It stores durable state in SQLite, exposes REST and SSE endpoints, serves a lightweight web UI, and includes a CLI for scripting and manual updates.
+
+## What It Does
+
+- groups work into `Workstreams`
+- tracks actionable `Tasks` inside each workstream
+- stores append-only `Updates` on tasks
+- streams live updates over SSE
+- serves a web dashboard and task detail pages
+- accepts manual updates, Claude hook payloads, and GitHub webhook payloads
+
+## Workspace
+
+- `crates/monitor-common`
+  Shared domain types and API request/response structs.
+- `crates/monitor-server`
+  Axum server, SQLite storage, SSE, Askama web UI, and source adapters.
+- `crates/monitor-cli`
+  CLI for creating workstreams/tasks and sending manual updates.
+
+## Requirements
+
+- Rust toolchain with `cargo`
+- SQLite support is bundled through `sqlx`/`libsqlite3-sys`
+- a browser if you want to use the web UI
+
+## Quick Start
+
+Start the server:
+
+```bash
+cargo run -p monitor-server
+```
+
+By default it listens on `http://127.0.0.1:3000` and creates `monitor.db` in the repo root.
+
+Open the web UI:
+
+```text
+http://127.0.0.1:3000/dashboard
+```
+
+Create a workstream:
+
+```bash
+cargo run -p monitor-cli -- workstream create "Monitor MVP"
+```
+
+Create a task:
+
+```bash
+cargo run -p monitor-cli -- task create "SSE replay support" \
+  --workstream <WORKSTREAM_ID>
+```
+
+Send a manual update:
+
+```bash
+cargo run -p monitor-cli -- update manual \
+  --task <TASK_ID> \
+  --message "Implemented initial SSE path" \
+  --kind manual_note \
+  --level info \
+  --tags backend,sse
+```
+
+List tasks:
+
+```bash
+cargo run -p monitor-cli -- task list
+```
+
+## Configuration
+
+The server reads configuration from environment variables:
+
+- `MONITOR_BIND`
+  Bind address. Default: `127.0.0.1:3000`
+- `MONITOR_DB`
+  SQLite URL. Default: `sqlite:monitor.db?mode=rwc`
+- `MONITOR_AUTH_MODE`
+  `relaxed` or `strict`
+- `MONITOR_API_TOKENS`
+  Comma-separated bearer tokens
+
+Example:
+
+```bash
+export MONITOR_AUTH_MODE=strict
+export MONITOR_API_TOKENS=dev-secret-token
+cargo run -p monitor-server
+```
+
+Auth behavior:
+
+- `relaxed`
+  Read endpoints may be open. Write endpoints require a token if tokens are configured.
+- `strict`
+  Read and write endpoints require a token.
+  If no tokens are configured in strict mode, the server fails closed on API requests.
+
+For CLI usage against an authenticated server:
+
+```bash
+export MONITOR_TOKEN=dev-secret-token
+cargo run -p monitor-cli -- workstream list
+```
+
+## CLI
+
+Common commands:
+
+```bash
+# Workstreams
+cargo run -p monitor-cli -- workstream create "My Workstream"
+cargo run -p monitor-cli -- workstream list --include-archived
+cargo run -p monitor-cli -- workstream update <WORKSTREAM_ID> --status archived
+
+# Tasks
+cargo run -p monitor-cli -- task create "My Task" --workstream <WORKSTREAM_ID>
+cargo run -p monitor-cli -- task list --workstream <WORKSTREAM_ID>
+cargo run -p monitor-cli -- task update <TASK_ID> --status blocked
+cargo run -p monitor-cli -- task update <TASK_ID> --summary "Waiting on vendor response"
+
+# Manual updates
+cargo run -p monitor-cli -- update manual --task <TASK_ID> --message "Progress note"
+```
+
+The CLI prints JSON responses so it can be used in scripts.
+
+## API Overview
+
+State endpoints:
+
+- `POST /api/workstreams`
+- `GET /api/workstreams`
+- `PATCH /api/workstreams/:id`
+- `POST /api/tasks`
+- `GET /api/tasks`
+- `PATCH /api/tasks/:id`
+- `GET /api/updates`
+- `GET /api/stream`
+
+Ingest endpoints:
+
+- `POST /api/updates/manual`
+- `POST /api/updates/claude-hook`
+- `POST /api/updates/github-webhook`
+
+Useful query parameters:
+
+- `GET /api/workstreams?include_archived=true`
+- `GET /api/tasks?workstream_id=<UUID>&status=active`
+- `GET /api/updates?task_id=<UUID>&kind=tool_use&limit=50`
+- `GET /api/updates?tag=github&tag=completed`
+  Repeated `tag` params are match-any.
+- `GET /api/updates?after_seq=123`
+- `GET /api/stream?task_id=<UUID>`
+
+## SSE
+
+`GET /api/stream` emits normalized `Update` events.
+
+Behavior:
+
+- SSE event id is `Update.seq`
+- `Last-Event-ID` is honored on reconnect
+- `after_seq` is also supported as a query param
+- SSE is update-only in v1
+- task/workstream mutations are not broadcast unless they also create an update
+
+Simple curl example:
+
+```bash
+curl -N http://127.0.0.1:3000/api/stream
+```
+
+Authenticated example:
+
+```bash
+curl -N \
+  -H "Authorization: Bearer $MONITOR_TOKEN" \
+  http://127.0.0.1:3000/api/stream
+```
+
+## Manual E2E Checklist
+
+Run this outside the sandbox on your machine.
+
+### 1. Start the server
+
+Relaxed local mode:
+
+```bash
+cargo run -p monitor-server
+```
+
+Strict mode:
+
+```bash
+export MONITOR_AUTH_MODE=strict
+export MONITOR_API_TOKENS=dev-secret-token
+cargo run -p monitor-server
+```
+
+### 2. Create a workstream
+
+```bash
+cargo run -p monitor-cli -- workstream create "E2E Workstream"
+```
+
+Save the returned `id`.
+
+### 3. Create a task
+
+```bash
+cargo run -p monitor-cli -- task create "E2E Task" --workstream <WORKSTREAM_ID>
+```
+
+Save the returned `id`.
+
+### 4. Open the UI
+
+Open:
+
+```text
+http://127.0.0.1:3000/dashboard
+```
+
+Verify:
+
+- the workstream appears
+- the task appears under it
+- task detail loads at `/tasks/<TASK_ID>`
+
+### 5. Open an SSE stream
+
+In another terminal:
+
+```bash
+curl -N http://127.0.0.1:3000/api/stream?task_id=<TASK_ID>
+```
+
+Or, in strict mode:
+
+```bash
+curl -N \
+  -H "Authorization: Bearer dev-secret-token" \
+  "http://127.0.0.1:3000/api/stream?task_id=<TASK_ID>"
+```
+
+### 6. Send a manual update
+
+```bash
+cargo run -p monitor-cli -- update manual \
+  --task <TASK_ID> \
+  --message "Manual E2E update" \
+  --kind manual_note \
+  --level info \
+  --tags e2e,manual
+```
+
+Verify:
+
+- the SSE terminal receives an `update` event
+- the task detail page shows the new update at the top
+
+### 7. Update task state
+
+```bash
+cargo run -p monitor-cli -- task update <TASK_ID> --status blocked
+cargo run -p monitor-cli -- task update <TASK_ID> --summary "Blocked during e2e verification"
+```
+
+Verify:
+
+- task detail reflects the new status and summary
+- dashboard reflects the updated summary/status after refresh or UI-initiated partial update
+
+### 8. Check replay/catch-up
+
+Send two more updates:
+
+```bash
+cargo run -p monitor-cli -- update manual --task <TASK_ID> --message "Update one"
+cargo run -p monitor-cli -- update manual --task <TASK_ID> --message "Update two"
+```
+
+Then query history:
+
+```bash
+curl "http://127.0.0.1:3000/api/updates?task_id=<TASK_ID>&limit=50"
+```
+
+Verify:
+
+- updates are returned with increasing `seq`
+- `total` reflects all matches, not just the page size
+
+### 9. Check tag filtering
+
+```bash
+curl "http://127.0.0.1:3000/api/updates?tag=e2e&tag=manual"
+```
+
+Verify:
+
+- results include updates matching either tag
+
+### 10. Check auth behavior
+
+Strict mode only:
+
+- without token:
+  - `GET /api/workstreams` should return `401`
+  - `POST /api/updates/manual` should return `401`
+- with token:
+  - both should succeed
+
+## Automated Tests
+
+Run the full workspace tests:
+
+```bash
+cargo test --workspace
+```
+
+Run server-only tests:
+
+```bash
+cargo test -p monitor-server --bin monitor-server
+```
+
+Useful subsets:
+
+```bash
+cargo test -p monitor-server auth_tests
+cargo test -p monitor-server integration_tests
+cargo test -p monitor-server smoke_test
+```
+
+Note:
+
+- SSE and smoke tests bind a real loopback listener on `127.0.0.1:0`
+- those tests must be run in a normal local environment where opening local sockets is allowed
+- they will fail in restricted sandboxes that deny loopback binds
+
+## Source Adapters
+
+### Claude Code hooks
+
+Send raw hook payloads to:
+
+```text
+POST /api/updates/claude-hook
+```
+
+The request must include:
+
+- `task_id`
+- `payload`
+
+The hook caller is responsible for routing the event to the correct `task_id`.
+
+### GitHub webhooks
+
+Send raw GitHub webhook payloads to:
+
+```text
+POST /api/updates/github-webhook
+```
+
+The request must include:
+
+- `task_id`
+- `payload`
+- optional selected headers such as `x-github-event` and `x-github-delivery`
+
+## Project Status
+
+Current design and implementation references:
+
+- [docs/plans/monitor-system-design.md](docs/plans/monitor-system-design.md)
+- [docs/plans/monitor-implementation-plan.md](docs/plans/monitor-implementation-plan.md)
+- [ai_docs/source-event-shapes.md](ai_docs/source-event-shapes.md)

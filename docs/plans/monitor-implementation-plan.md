@@ -185,13 +185,17 @@ Create tables:
    - `POST /api/updates/manual`
 2. Implement filtering on:
    - tasks by `workstream_id`, `status`
-   - updates by `task_id`, `source`, `kind`, `after_seq`, time bounds
-3. Standardize error responses:
+   - updates by `task_id`, `source`, `kind`, repeated `tag` query params, `after_seq`, time bounds
+3. Define pagination and filter semantics:
+   - default page size: `50`
+   - maximum page size: `200`
+   - repeated `?tag=a&tag=b` means match-any across the supplied tags
+4. Standardize error responses:
    - validation errors
    - not found
    - auth failures
    - internal errors
-4. Add health endpoint:
+5. Add health endpoint:
    - `GET /health`
 
 ### Verification
@@ -220,6 +224,10 @@ Create tables:
 6. Decide behavior when resume cursor cannot be served:
    - return an error that instructs clients to refetch snapshot
    - or start live-only and rely on client catch-up via `GET /api/updates`
+7. Keep SSE update-only in v1:
+   - SSE emits normalized `Update` events only
+   - task/workstream mutations are not independently broadcast unless they also create an update
+   - UI should refetch affected partials after its own task/workstream mutations
 
 ### Verification
 
@@ -255,37 +263,7 @@ Create tables:
 - unauthorized reads fail in strict mode
 - authorized SSE connections work
 
-## Milestone 7: Source Adapters
-
-### Deliverables
-
-- Claude hook ingest
-- GitHub webhook ingest
-
-### Tasks
-
-1. Implement adapter modules under `src/adapters/`:
-   - `manual.rs`
-   - `claude_hook.rs`
-   - `github_webhook.rs`
-2. Claude hook adapter:
-   - accept raw hook payload
-   - derive `message`, `kind`, `level`, `source`
-   - store raw payload in `data`
-3. GitHub webhook adapter:
-   - accept relevant headers plus raw payload
-   - derive `message`, `kind`, `level`, `source`
-   - store curated near-raw subset plus delivery metadata in `data`
-4. Add routes:
-   - `POST /api/updates/claude-hook`
-   - `POST /api/updates/github-webhook`
-
-### Verification
-
-- sample Claude payload normalizes as expected
-- sample GitHub `workflow_job` and `workflow_run` payloads normalize as expected
-
-## Milestone 8: Web UI
+## Milestone 7: Web UI
 
 ### Deliverables
 
@@ -309,7 +287,7 @@ Create tables:
    - status change UI
 4. Use HTMX for:
    - create/update forms
-   - partial refreshes
+   - partial refreshes after the initiating client's own mutations
 5. Add minimal JS for:
    - SSE connection
    - targeting task or thread partial refresh after new updates
@@ -320,6 +298,39 @@ Create tables:
 - task detail shows history newest-first
 - posting a manual update refreshes the task thread
 - live updates appear without full page reload
+
+## Milestone 8: Source Adapters
+
+### Deliverables
+
+- Claude hook ingest
+- GitHub webhook ingest
+
+### Tasks
+
+1. Implement adapter modules under `src/adapters/`:
+   - `manual.rs`
+   - `claude_hook.rs`
+   - `github_webhook.rs`
+2. Claude hook adapter:
+   - accept raw hook payload
+   - require `task_id` routing from the caller rather than inferring it from the hook payload
+   - document the expected routing source for local hooks, for example an env var supplied by the hook script
+   - derive `message`, `kind`, `level`, `source`
+   - store raw payload in `data`
+3. GitHub webhook adapter:
+   - accept relevant headers plus raw payload
+   - derive `message`, `kind`, `level`, `source`
+   - store curated near-raw subset plus delivery metadata in `data`
+4. Add routes:
+   - `POST /api/updates/claude-hook`
+   - `POST /api/updates/github-webhook`
+
+### Verification
+
+- sample Claude payload normalizes as expected
+- Claude hook ingest succeeds when `task_id` is supplied by the caller
+- sample GitHub `workflow_job` and `workflow_run` payloads normalize as expected
 
 ## Milestone 9: CLI
 
@@ -360,7 +371,9 @@ Create tables:
 
 1. Add structured tracing.
 2. Improve error messages and response bodies.
-3. Add pagination defaults and limits for update queries.
+3. Add pagination defaults and limits for update queries and enforce:
+   - default `50`
+   - max `200`
 4. Add retention/size guardrails for stored GitHub payload subsets.
 5. Add graceful shutdown handling.
 6. Add smoke tests for core flows.

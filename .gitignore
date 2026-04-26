@@ -1,0 +1,5 @@
+target/
+monitor.db
+*.db
+*.sqlite
+*.sqlite3

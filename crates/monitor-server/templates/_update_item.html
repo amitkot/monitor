@@ -1,0 +1,17 @@
+<li class="update-item">
+    <div class="update-meta">
+        <span>{{ update.timestamp.format("%Y-%m-%d %H:%M:%S UTC") }}</span>
+        <strong>{{ update.source }}</strong>
+        {% match update.kind %}
+            {% when Some with (k) %}
+            <span class="badge badge-active">{{ k }}</span>
+            {% when None %}
+        {% endmatch %}
+        {% match update.level %}
+            {% when Some with (lvl) %}
+            <span class="badge level-{{ lvl }}">{{ lvl }}</span>
+            {% when None %}
+        {% endmatch %}
+    </div>
+    <div class="update-message">{{ update.message }}</div>
+</li>
