@@ -110,7 +110,10 @@ impl AppService {
     pub async fn update_task(&self, id: Uuid, req: &PatchTaskRequest) -> Result<Task> {
         if let Some(workstream_id) = req.workstream_id {
             if self.db.get_workstream(workstream_id).await?.is_none() {
-                return Err(ServiceError::NotFound(format!("workstream {}", workstream_id)));
+                return Err(ServiceError::NotFound(format!(
+                    "workstream {}",
+                    workstream_id
+                )));
             }
         }
 
@@ -200,12 +203,11 @@ impl AppService {
             return Err(ServiceError::NotFound(format!("task {}", req.task_id)));
         }
 
-        let (source, message, kind, level, tags, data) =
-            github_webhook::normalize_github_webhook(
-                req.task_id,
-                req.headers.as_ref(),
-                &req.payload,
-            );
+        let (source, message, kind, level, tags, data) = github_webhook::normalize_github_webhook(
+            req.task_id,
+            req.headers.as_ref(),
+            &req.payload,
+        );
 
         let update = self
             .db

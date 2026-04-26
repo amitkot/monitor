@@ -158,10 +158,7 @@ mod tests {
         assert!(req.name.is_none());
         assert!(req.workstream_id.is_none());
         assert_eq!(req.status, Some(TaskStatus::Blocked));
-        assert_eq!(
-            req.summary_text,
-            Some("Waiting on dependency".to_string())
-        );
+        assert_eq!(req.summary_text, Some("Waiting on dependency".to_string()));
         assert!(req.metadata.is_none());
     }
 

@@ -67,7 +67,10 @@ impl MonitorClient {
 // ---------------------------------------------------------------------------
 
 async fn send(req: reqwest::RequestBuilder) -> Result<serde_json::Value, String> {
-    let resp = req.send().await.map_err(|e| format!("request failed: {e}"))?;
+    let resp = req
+        .send()
+        .await
+        .map_err(|e| format!("request failed: {e}"))?;
     let status = resp.status();
     let body = resp
         .text()

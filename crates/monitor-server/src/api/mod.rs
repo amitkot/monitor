@@ -6,11 +6,11 @@ mod workstreams;
 use std::sync::Arc;
 
 use axum::{
-    Router,
     http::StatusCode,
     middleware,
     response::{IntoResponse, Json, Response},
     routing::{get, patch, post},
+    Router,
 };
 use serde::Serialize;
 use tower_http::trace::TraceLayer;
@@ -107,8 +107,5 @@ pub fn router(service: Arc<AppService>, auth_state: Arc<AuthState>) -> Router {
     let web = crate::web::router();
 
     // Merge at top level so web routes are NOT wrapped by API auth middleware
-    Router::new()
-        .merge(api)
-        .merge(web)
-        .with_state(service)
+    Router::new().merge(api).merge(web).with_state(service)
 }

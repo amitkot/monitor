@@ -10,7 +10,10 @@ mod client;
 // ---------------------------------------------------------------------------
 
 #[derive(Parser)]
-#[command(name = "monitor", about = "Monitor CLI - send updates and manage state")]
+#[command(
+    name = "monitor",
+    about = "Monitor CLI - send updates and manage state"
+)]
 struct Cli {
     /// Server URL
     #[arg(long, env = "MONITOR_SERVER", default_value = "http://127.0.0.1:3000")]

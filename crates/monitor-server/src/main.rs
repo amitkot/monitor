@@ -56,7 +56,7 @@ async fn main() {
 async fn shutdown_signal() {
     #[cfg(unix)]
     {
-        use tokio::signal::unix::{SignalKind, signal};
+        use tokio::signal::unix::{signal, SignalKind};
         let mut sigterm = signal(SignalKind::terminate()).expect("failed to register SIGTERM");
         tokio::select! {
             _ = tokio::signal::ctrl_c() => {},
@@ -1146,9 +1146,7 @@ mod auth_tests {
                     .method(http::Method::POST)
                     .uri("/api/workstreams")
                     .header("content-type", "application/json")
-                    .body(Body::from(
-                        serde_json::json!({"name": "Test"}).to_string(),
-                    ))
+                    .body(Body::from(serde_json::json!({"name": "Test"}).to_string()))
                     .unwrap(),
             )
             .await
@@ -1180,9 +1178,7 @@ mod auth_tests {
                     .method(http::Method::POST)
                     .uri("/api/workstreams")
                     .header("content-type", "application/json")
-                    .body(Body::from(
-                        serde_json::json!({"name": "Test"}).to_string(),
-                    ))
+                    .body(Body::from(serde_json::json!({"name": "Test"}).to_string()))
                     .unwrap(),
             )
             .await
@@ -1196,8 +1192,7 @@ mod auth_tests {
 
     #[tokio::test]
     async fn relaxed_get_without_token_succeeds() {
-        let app =
-            app_with_auth(AuthMode::Relaxed, vec!["secret-token".to_string()]).await;
+        let app = app_with_auth(AuthMode::Relaxed, vec!["secret-token".to_string()]).await;
         let resp = app
             .oneshot(
                 Request::builder()
@@ -1212,17 +1207,14 @@ mod auth_tests {
 
     #[tokio::test]
     async fn relaxed_post_without_token_returns_401() {
-        let app =
-            app_with_auth(AuthMode::Relaxed, vec!["secret-token".to_string()]).await;
+        let app = app_with_auth(AuthMode::Relaxed, vec!["secret-token".to_string()]).await;
         let resp = app
             .oneshot(
                 Request::builder()
                     .method(http::Method::POST)
                     .uri("/api/workstreams")
                     .header("content-type", "application/json")
-                    .body(Body::from(
-                        serde_json::json!({"name": "Test"}).to_string(),
-                    ))
+                    .body(Body::from(serde_json::json!({"name": "Test"}).to_string()))
                     .unwrap(),
             )
             .await
@@ -1234,8 +1226,7 @@ mod auth_tests {
 
     #[tokio::test]
     async fn relaxed_post_with_valid_token_succeeds() {
-        let app =
-            app_with_auth(AuthMode::Relaxed, vec!["secret-token".to_string()]).await;
+        let app = app_with_auth(AuthMode::Relaxed, vec!["secret-token".to_string()]).await;
         let resp = app
             .oneshot(
                 Request::builder()
@@ -1243,9 +1234,7 @@ mod auth_tests {
                     .uri("/api/workstreams")
                     .header("content-type", "application/json")
                     .header("authorization", "Bearer secret-token")
-                    .body(Body::from(
-                        serde_json::json!({"name": "Test"}).to_string(),
-                    ))
+                    .body(Body::from(serde_json::json!({"name": "Test"}).to_string()))
                     .unwrap(),
             )
             .await
@@ -1259,8 +1248,7 @@ mod auth_tests {
 
     #[tokio::test]
     async fn strict_get_without_token_returns_401() {
-        let app =
-            app_with_auth(AuthMode::Strict, vec!["secret-token".to_string()]).await;
+        let app = app_with_auth(AuthMode::Strict, vec!["secret-token".to_string()]).await;
         let resp = app
             .oneshot(
                 Request::builder()
@@ -1275,8 +1263,7 @@ mod auth_tests {
 
     #[tokio::test]
     async fn strict_get_with_valid_token_succeeds() {
-        let app =
-            app_with_auth(AuthMode::Strict, vec!["secret-token".to_string()]).await;
+        let app = app_with_auth(AuthMode::Strict, vec!["secret-token".to_string()]).await;
         let resp = app
             .oneshot(
                 Request::builder()
@@ -1296,8 +1283,7 @@ mod auth_tests {
 
     #[tokio::test]
     async fn invalid_token_returns_401() {
-        let app =
-            app_with_auth(AuthMode::Relaxed, vec!["secret-token".to_string()]).await;
+        let app = app_with_auth(AuthMode::Relaxed, vec!["secret-token".to_string()]).await;
         let resp = app
             .oneshot(
                 Request::builder()
@@ -1305,9 +1291,7 @@ mod auth_tests {
                     .uri("/api/workstreams")
                     .header("content-type", "application/json")
                     .header("authorization", "Bearer wrong-token")
-                    .body(Body::from(
-                        serde_json::json!({"name": "Test"}).to_string(),
-                    ))
+                    .body(Body::from(serde_json::json!({"name": "Test"}).to_string()))
                     .unwrap(),
             )
             .await
@@ -1324,8 +1308,7 @@ mod auth_tests {
 
     #[tokio::test]
     async fn health_always_exempt_in_strict_mode() {
-        let app =
-            app_with_auth(AuthMode::Strict, vec!["secret-token".to_string()]).await;
+        let app = app_with_auth(AuthMode::Strict, vec!["secret-token".to_string()]).await;
         let resp = app
             .oneshot(
                 Request::builder()
@@ -1358,9 +1341,7 @@ mod auth_tests {
                     .uri("/api/workstreams")
                     .header("content-type", "application/json")
                     .header("authorization", "Bearer token-b")
-                    .body(Body::from(
-                        serde_json::json!({"name": "Test"}).to_string(),
-                    ))
+                    .body(Body::from(serde_json::json!({"name": "Test"}).to_string()))
                     .unwrap(),
             )
             .await
@@ -1599,7 +1580,9 @@ mod smoke_test {
         // 8. Verify update filtering works
         // ---------------------------------------------------------------
         let filtered: Value = client
-            .get(format!("{base}/api/updates?task_id={task_id}&source=manual"))
+            .get(format!(
+                "{base}/api/updates?task_id={task_id}&source=manual"
+            ))
             .send()
             .await
             .unwrap()
@@ -1610,9 +1593,7 @@ mod smoke_test {
         assert_eq!(filtered["items"][0]["source"], "manual");
 
         let filtered_kind: Value = client
-            .get(format!(
-                "{base}/api/updates?task_id={task_id}&kind=ci_run"
-            ))
+            .get(format!("{base}/api/updates?task_id={task_id}&kind=ci_run"))
             .send()
             .await
             .unwrap()

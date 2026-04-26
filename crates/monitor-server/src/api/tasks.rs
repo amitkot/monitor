@@ -1,8 +1,8 @@
 use axum::{
-    Json,
     extract::{Path, Query, State},
     http::StatusCode,
     response::IntoResponse,
+    Json,
 };
 use serde::Deserialize;
 use uuid::Uuid;
@@ -39,7 +39,9 @@ pub async fn list(
     State(service): State<AppState>,
     Query(params): Query<ListTasksQuery>,
 ) -> Result<impl IntoResponse, ServiceError> {
-    let items = service.list_tasks(params.workstream_id, params.status).await?;
+    let items = service
+        .list_tasks(params.workstream_id, params.status)
+        .await?;
     let total = items.len() as i64;
     Ok(Json(ListResponse { items, total }))
 }

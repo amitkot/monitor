@@ -84,8 +84,7 @@ mod tests {
             "tool_use_id": "toolu_01ABC123"
         });
 
-        let (source, message, kind, level, tags, data) =
-            normalize_claude_hook(task_id, &payload);
+        let (source, message, kind, level, tags, data) = normalize_claude_hook(task_id, &payload);
 
         assert_eq!(source, "claude:abc123");
         assert_eq!(message, "Tool `Write` completed");
@@ -109,8 +108,7 @@ mod tests {
             "is_interrupt": false
         });
 
-        let (source, message, kind, level, tags, _data) =
-            normalize_claude_hook(task_id, &payload);
+        let (source, message, kind, level, tags, _data) = normalize_claude_hook(task_id, &payload);
 
         assert_eq!(source, "claude:abc123");
         assert_eq!(
@@ -133,8 +131,7 @@ mod tests {
             "tool_use_id": "toolu_99"
         });
 
-        let (source, message, kind, level, tags, _data) =
-            normalize_claude_hook(task_id, &payload);
+        let (source, message, kind, level, tags, _data) = normalize_claude_hook(task_id, &payload);
 
         assert_eq!(source, "claude:sess-42");
         assert_eq!(message, "Tool `Read` starting");
@@ -151,8 +148,7 @@ mod tests {
             "hook_event_name": "SomeNewEvent"
         });
 
-        let (source, message, kind, level, tags, _data) =
-            normalize_claude_hook(task_id, &payload);
+        let (source, message, kind, level, tags, _data) = normalize_claude_hook(task_id, &payload);
 
         assert_eq!(source, "claude:sess-99");
         assert_eq!(message, "Claude hook event: SomeNewEvent");

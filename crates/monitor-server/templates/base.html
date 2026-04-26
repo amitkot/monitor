@@ -50,6 +50,7 @@
             font-size: 0.9rem;
         }
         nav a:hover { text-decoration: underline; }
+        nav a.active { color: var(--color-text); font-weight: 600; }
         .container {
             max-width: 960px;
             margin: 1.5rem auto;
@@ -180,6 +181,23 @@
             margin-bottom: 0.25rem;
         }
         .update-message { font-size: 0.9rem; }
+        .feed-context {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 0.35rem;
+            font-size: 0.85rem;
+        }
+        .feed-context a {
+            color: var(--color-primary);
+            text-decoration: none;
+            font-weight: 600;
+        }
+        .feed-context a:hover { text-decoration: underline; }
+        .feed-workstream {
+            color: var(--color-text-muted);
+            font-size: 0.8rem;
+        }
 
         /* Responsive */
         @media (max-width: 600px) {
@@ -193,6 +211,7 @@
     <nav>
         <a href="/dashboard" class="brand">Monitor</a>
         <a href="/dashboard">Dashboard</a>
+        <a href="/stream">Stream</a>
     </nav>
     <div class="container">
         {% block content %}{% endblock %}

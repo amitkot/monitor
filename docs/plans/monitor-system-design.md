@@ -358,6 +358,12 @@ Task detail view:
 - includes manual update entry
 - includes summary editing
 
+Stream view:
+
+- shows recent updates across all tasks, newest-first
+- includes task and workstream context for each update
+- refreshes from live SSE events
+
 Supported UI actions:
 
 - create workstream

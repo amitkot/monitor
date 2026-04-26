@@ -1,11 +1,11 @@
 use std::convert::Infallible;
 use std::time::Duration;
 
+use axum::http::HeaderMap;
 use axum::{
     extract::{Query, State},
     response::sse::{Event, KeepAlive, Sse},
 };
-use axum::http::HeaderMap;
 use futures::stream::Stream;
 use serde::Deserialize;
 use uuid::Uuid;
@@ -72,7 +72,10 @@ fn matches_live_filter(event: &LiveEvent, query: &StreamQuery) -> bool {
             }
         }
         LiveEvent::WorkstreamCreated(_) | LiveEvent::WorkstreamUpdated(_) => {
-            query.task_id.is_none() && query.source.is_none() && query.kind.is_none() && query.tags.is_empty()
+            query.task_id.is_none()
+                && query.source.is_none()
+                && query.kind.is_none()
+                && query.tags.is_empty()
         }
     }
 }

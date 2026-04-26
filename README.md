@@ -44,6 +44,12 @@ Open the web UI:
 http://127.0.0.1:3000/dashboard
 ```
 
+Open the global live feed:
+
+```text
+http://127.0.0.1:3000/stream
+```
+
 Create a workstream:
 
 ```bash
@@ -163,15 +169,15 @@ Useful query parameters:
 
 ## SSE
 
-`GET /api/stream` emits normalized `Update` events.
+`GET /api/stream` emits live events for task activity and state changes.
 
 Behavior:
 
-- SSE event id is `Update.seq`
+- task activity is emitted as `event: update`
+- state changes are emitted as `task_created`, `task_updated`, `workstream_created`, and `workstream_updated`
+- `update` events use `Update.seq` as the SSE event id
 - `Last-Event-ID` is honored on reconnect
 - `after_seq` is also supported as a query param
-- SSE is update-only in v1
-- task/workstream mutations are not broadcast unless they also create an update
 
 Simple curl example:
 
@@ -236,6 +242,17 @@ Verify:
 - the workstream appears
 - the task appears under it
 - task detail loads at `/tasks/<TASK_ID>`
+
+Open the global stream:
+
+```text
+http://127.0.0.1:3000/stream
+```
+
+Verify:
+
+- updates across all tasks appear newest-first
+- each update links back to its task
 
 ### 5. Open an SSE stream
 

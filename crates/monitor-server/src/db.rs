@@ -337,7 +337,8 @@ impl Db {
         let now_str = now.to_rfc3339();
         let level_str = level.as_ref().map(update_level_to_str);
         let tags_str = serde_json::to_string(tags).unwrap_or_else(|_| "[]".to_string());
-        let data_str = data.map(|d| serde_json::to_string(d).unwrap_or_else(|_| "null".to_string()));
+        let data_str =
+            data.map(|d| serde_json::to_string(d).unwrap_or_else(|_| "null".to_string()));
 
         sqlx::query(
             "INSERT INTO updates (id, task_id, source, timestamp, message, kind, level, tags, data)
@@ -496,11 +497,15 @@ pub async fn init_db(database_url: &str) -> Result<SqlitePool> {
         Sqlite::create_database(database_url).await?;
     }
 
-        let pool = SqlitePoolOptions::new()
+    let pool = SqlitePoolOptions::new()
         .after_connect(|conn, _meta| {
             Box::pin(async move {
-                sqlx::query("PRAGMA foreign_keys=ON").execute(&mut *conn).await?;
-                sqlx::query("PRAGMA journal_mode=WAL").execute(&mut *conn).await?;
+                sqlx::query("PRAGMA foreign_keys=ON")
+                    .execute(&mut *conn)
+                    .await?;
+                sqlx::query("PRAGMA journal_mode=WAL")
+                    .execute(&mut *conn)
+                    .await?;
                 Ok(())
             })
         })
@@ -520,8 +525,8 @@ pub async fn init_db(database_url: &str) -> Result<SqlitePool> {
 
 fn row_to_workstream(row: &SqliteRow) -> Result<Workstream> {
     let id_str: String = row.try_get("id")?;
-    let id = Uuid::parse_str(&id_str)
-        .map_err(|e| DbError::InvalidData(format!("invalid uuid: {e}")))?;
+    let id =
+        Uuid::parse_str(&id_str).map_err(|e| DbError::InvalidData(format!("invalid uuid: {e}")))?;
 
     let status_str: String = row.try_get("status")?;
     let status = parse_workstream_status(&status_str)?;
@@ -548,8 +553,8 @@ fn row_to_workstream(row: &SqliteRow) -> Result<Workstream> {
 
 fn row_to_task(row: &SqliteRow) -> Result<Task> {
     let id_str: String = row.try_get("id")?;
-    let id = Uuid::parse_str(&id_str)
-        .map_err(|e| DbError::InvalidData(format!("invalid uuid: {e}")))?;
+    let id =
+        Uuid::parse_str(&id_str).map_err(|e| DbError::InvalidData(format!("invalid uuid: {e}")))?;
 
     let ws_id_str: String = row.try_get("workstream_id")?;
     let workstream_id = Uuid::parse_str(&ws_id_str)
@@ -592,8 +597,8 @@ fn row_to_update(row: &SqliteRow) -> Result<Update> {
     let seq: i64 = row.try_get("seq")?;
 
     let id_str: String = row.try_get("id")?;
-    let id = Uuid::parse_str(&id_str)
-        .map_err(|e| DbError::InvalidData(format!("invalid uuid: {e}")))?;
+    let id =
+        Uuid::parse_str(&id_str).map_err(|e| DbError::InvalidData(format!("invalid uuid: {e}")))?;
 
     let task_id_str: String = row.try_get("task_id")?;
     let task_id = Uuid::parse_str(&task_id_str)
@@ -606,8 +611,7 @@ fn row_to_update(row: &SqliteRow) -> Result<Update> {
     let level = level_str.as_deref().map(parse_update_level).transpose()?;
 
     let tags_str: String = row.try_get("tags")?;
-    let tags: Vec<String> =
-        serde_json::from_str(&tags_str).unwrap_or_default();
+    let tags: Vec<String> = serde_json::from_str(&tags_str).unwrap_or_default();
 
     let data_str: Option<String> = row.try_get("data")?;
     let data = data_str
@@ -924,10 +928,7 @@ mod tests {
         .await
         .unwrap();
 
-        let active = db
-            .list_tasks(None, Some(TaskStatus::Active))
-            .await
-            .unwrap();
+        let active = db.list_tasks(None, Some(TaskStatus::Active)).await.unwrap();
         assert_eq!(active.len(), 1);
         assert_eq!(active[0].name, "Active Task");
 
@@ -1031,15 +1032,7 @@ mod tests {
             .unwrap();
 
         let u2 = db
-            .insert_update(
-                task.id,
-                "manual",
-                "Progress note",
-                None,
-                None,
-                &[],
-                None,
-            )
+            .insert_update(task.id, "manual", "Progress note", None, None, &[], None)
             .await
             .unwrap();
 
@@ -1256,7 +1249,10 @@ mod tests {
             .unwrap();
         }
 
-        let limited = db.list_updates(None, None, None, &[], None, 2).await.unwrap();
+        let limited = db
+            .list_updates(None, None, None, &[], None, 2)
+            .await
+            .unwrap();
         assert_eq!(limited.len(), 2);
     }
 
@@ -1314,7 +1310,9 @@ mod tests {
         assert_eq!(filtered.len(), 1);
         assert_eq!(filtered[0].message, "GitHub event");
         assert_eq!(
-            db.count_updates(None, None, None, &tags, None).await.unwrap(),
+            db.count_updates(None, None, None, &tags, None)
+                .await
+                .unwrap(),
             1
         );
     }

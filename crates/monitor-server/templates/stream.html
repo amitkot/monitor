@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+
+{% block title %}Stream - Monitor{% endblock %}
+
+{% block content %}
+<h1>Stream</h1>
+
+<div class="card">
+    {% if items.is_empty() %}
+    <p style="color: var(--color-text-muted);">No updates yet.</p>
+    {% else %}
+    <ul class="update-thread">
+        {% for item in items %}
+        <li class="update-item">
+            <div class="feed-context">
+                {% match item.task %}
+                    {% when Some with (task) %}
+                    <a href="/tasks/{{ task.id }}">{{ task.name }}</a>
+                    {% when None %}
+                    <span>Unknown task</span>
+                {% endmatch %}
+                {% match item.workstream %}
+                    {% when Some with (workstream) %}
+                    <span class="feed-workstream">{{ workstream.name }}</span>
+                    {% when None %}
+                {% endmatch %}
+            </div>
+            <div class="update-meta">
+                <span>{{ item.update.timestamp.format("%Y-%m-%d %H:%M:%S UTC") }}</span>
+                <strong>{{ item.update.source }}</strong>
+                {% match item.update.kind %}
+                    {% when Some with (k) %}
+                    <span class="badge badge-active">{{ k }}</span>
+                    {% when None %}
+                {% endmatch %}
+                {% match item.update.level %}
+                    {% when Some with (lvl) %}
+                    <span class="badge level-{{ lvl }}">{{ lvl }}</span>
+                    {% when None %}
+                {% endmatch %}
+            </div>
+            <div class="update-message">{{ item.update.message }}</div>
+        </li>
+        {% endfor %}
+    </ul>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+(function() {
+    var source = new EventSource('/api/stream');
+    var reloadTimer = null;
+
+    source.onerror = function() {
+        console.warn('SSE connection lost, browser will retry automatically');
+    };
+    window.addEventListener('beforeunload', function() { source.close(); });
+
+    function scheduleReload() {
+        if (reloadTimer) return;
+        reloadTimer = window.setTimeout(function() {
+            window.location.reload();
+        }, 300);
+    }
+
+    source.addEventListener('update', scheduleReload);
+    source.addEventListener('task_created', scheduleReload);
+    source.addEventListener('task_updated', scheduleReload);
+    source.addEventListener('workstream_created', scheduleReload);
+    source.addEventListener('workstream_updated', scheduleReload);
+})();
+</script>
+{% endblock %}

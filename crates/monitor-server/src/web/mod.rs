@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::sync::Arc;
 
 use askama::Template;
@@ -62,6 +63,18 @@ struct TaskDetailTemplate {
     updates: Vec<Update>,
 }
 
+struct FeedItem {
+    update: Update,
+    task: Option<Task>,
+    workstream: Option<Workstream>,
+}
+
+#[derive(Template)]
+#[template(path = "stream.html")]
+struct StreamTemplate {
+    items: Vec<FeedItem>,
+}
+
 // ---------------------------------------------------------------------------
 // Handlers
 // ---------------------------------------------------------------------------
@@ -75,7 +88,11 @@ async fn dashboard(State(service): State<Arc<AppService>>) -> impl IntoResponse 
         Ok(ws) => ws,
         Err(e) => {
             tracing::error!("failed to list workstreams: {e}");
-            return (StatusCode::INTERNAL_SERVER_ERROR, "Failed to load dashboard").into_response();
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "Failed to load dashboard",
+            )
+                .into_response();
         }
     };
 
@@ -83,7 +100,11 @@ async fn dashboard(State(service): State<Arc<AppService>>) -> impl IntoResponse 
         Ok(t) => t,
         Err(e) => {
             tracing::error!("failed to list tasks: {e}");
-            return (StatusCode::INTERNAL_SERVER_ERROR, "Failed to load dashboard").into_response();
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "Failed to load dashboard",
+            )
+                .into_response();
         }
     };
 
@@ -149,6 +170,57 @@ async fn task_detail(
     .into_response()
 }
 
+async fn stream_page(State(service): State<Arc<AppService>>) -> impl IntoResponse {
+    let mut updates = match service.list_updates(None, None, None, &[], None, 200).await {
+        Ok(updates) => updates,
+        Err(e) => {
+            tracing::error!("failed to list updates: {e}");
+            return (StatusCode::INTERNAL_SERVER_ERROR, "Failed to load stream").into_response();
+        }
+    };
+    updates.reverse();
+
+    let tasks = match service.list_tasks(None, None).await {
+        Ok(tasks) => tasks,
+        Err(e) => {
+            tracing::error!("failed to list tasks for stream: {e}");
+            return (StatusCode::INTERNAL_SERVER_ERROR, "Failed to load stream").into_response();
+        }
+    };
+    let workstreams = match service.list_workstreams(true).await {
+        Ok(workstreams) => workstreams,
+        Err(e) => {
+            tracing::error!("failed to list workstreams for stream: {e}");
+            return (StatusCode::INTERNAL_SERVER_ERROR, "Failed to load stream").into_response();
+        }
+    };
+
+    let tasks_by_id: HashMap<Uuid, Task> = tasks.into_iter().map(|task| (task.id, task)).collect();
+    let workstreams_by_id: HashMap<Uuid, Workstream> = workstreams
+        .into_iter()
+        .map(|workstream| (workstream.id, workstream))
+        .collect();
+
+    let items = updates
+        .into_iter()
+        .map(|update| {
+            let task = tasks_by_id.get(&update.task_id).cloned();
+            let workstream = task
+                .as_ref()
+                .and_then(|task| workstreams_by_id.get(&task.workstream_id))
+                .cloned();
+
+            FeedItem {
+                update,
+                task,
+                workstream,
+            }
+        })
+        .collect();
+
+    HtmlTemplate(StreamTemplate { items }).into_response()
+}
+
 // ---------------------------------------------------------------------------
 // Router
 // ---------------------------------------------------------------------------
@@ -157,5 +229,6 @@ pub fn router() -> Router<Arc<AppService>> {
     Router::new()
         .route("/", get(index))
         .route("/dashboard", get(dashboard))
+        .route("/stream", get(stream_page))
         .route("/tasks/{id}", get(task_detail))
 }

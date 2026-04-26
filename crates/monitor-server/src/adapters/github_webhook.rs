@@ -72,10 +72,7 @@ pub fn normalize_github_webhook(
     let mut data = serde_json::Map::new();
     data.insert("action".to_string(), serde_json::json!(action));
     if let Some(name) = payload["repository"]["full_name"].as_str() {
-        data.insert(
-            "repository_full_name".to_string(),
-            serde_json::json!(name),
-        );
+        data.insert("repository_full_name".to_string(), serde_json::json!(name));
     }
     if let Some(login) = payload["sender"]["login"].as_str() {
         data.insert("sender_login".to_string(), serde_json::json!(login));

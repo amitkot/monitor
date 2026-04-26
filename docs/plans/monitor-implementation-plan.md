@@ -220,14 +220,17 @@ Create tables:
    - honor `Last-Event-ID`
    - optionally support `after_seq` query param
 5. Define event payload shape sent over SSE:
-   - likely the normalized `Update` JSON
+   - `update` events carry normalized `Update` JSON
+   - task/workstream state-change events carry the changed entity JSON
 6. Decide behavior when resume cursor cannot be served:
    - return an error that instructs clients to refetch snapshot
    - or start live-only and rely on client catch-up via `GET /api/updates`
-7. Keep SSE update-only in v1:
-   - SSE emits normalized `Update` events only
-   - task/workstream mutations are not independently broadcast unless they also create an update
-   - UI should refetch affected partials after its own task/workstream mutations
+7. Broadcast state changes in v1:
+   - `task_created`
+   - `task_updated`
+   - `workstream_created`
+   - `workstream_updated`
+   - UI pages should refresh affected views when these events arrive
 
 ### Verification
 
@@ -276,25 +279,30 @@ Create tables:
 1. Add Askama templates and page routes:
    - `/`
    - `/workstreams/:id`
+   - `/stream`
    - `/tasks/:id`
 2. Dashboard page:
    - active workstreams
    - tasks with status and optional summary
-3. Task detail page:
+3. Stream page:
+   - recent updates across all tasks, newest-first
+   - task and workstream context for each update
+4. Task detail page:
    - full update thread in reverse chronological order
    - manual update form
    - summary edit UI
    - status change UI
-4. Use HTMX for:
+5. Use HTMX for:
    - create/update forms
    - partial refreshes after the initiating client's own mutations
-5. Add minimal JS for:
+6. Add minimal JS for:
    - SSE connection
    - targeting task or thread partial refresh after new updates
 
 ### Verification
 
 - dashboard renders active workstreams and tasks
+- stream page renders recent updates across tasks
 - task detail shows history newest-first
 - posting a manual update refreshes the task thread
 - live updates appear without full page reload
