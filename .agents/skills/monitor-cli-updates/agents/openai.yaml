@@ -1,0 +1,4 @@
+interface:
+  display_name: "Monitor CLI Updates"
+  short_description: "Use monitor CLI for tasks and updates"
+  default_prompt: "Use $monitor-cli-updates to create a monitor task and post progress updates."
