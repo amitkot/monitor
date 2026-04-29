@@ -100,6 +100,7 @@ pub async fn stream(
     // Subscribe to the broadcast channel BEFORE fetching historical updates
     // so we don't miss any updates between the DB read and the live stream.
     let mut rx = service.subscribe();
+    let mut shutdown_rx = service.subscribe_shutdown();
 
     // Fetch historical catch-up updates (if requested).
     let catchup: Vec<Update> = if let Some(seq) = after_seq {
@@ -144,63 +145,70 @@ pub async fn stream(
 
         // 2. Switch to live broadcast
         loop {
-            match rx.recv().await {
-                Ok(event) => {
-                    if !matches_live_filter(&event, &query) {
-                        continue;
-                    }
-
+            tokio::select! {
+                _ = shutdown_rx.changed() => {
+                    break;
+                }
+                event = rx.recv() => {
                     match event {
-                        LiveEvent::UpdateCreated(update) => {
-                            // Skip duplicates that were already sent during catch-up
-                            if let Some(last) = last_sent_seq {
-                                if update.seq <= last {
-                                    continue;
-                                }
+                        Ok(event) => {
+                            if !matches_live_filter(&event, &query) {
+                                continue;
                             }
 
-                            last_sent_seq = Some(update.seq);
+                            match event {
+                                LiveEvent::UpdateCreated(update) => {
+                                    // Skip duplicates that were already sent during catch-up
+                                    if let Some(last) = last_sent_seq {
+                                        if update.seq <= last {
+                                            continue;
+                                        }
+                                    }
 
-                            let data = serde_json::to_string(&update).unwrap_or_default();
+                                    last_sent_seq = Some(update.seq);
+
+                                    let data = serde_json::to_string(&update).unwrap_or_default();
+                                    let event = Event::default()
+                                        .id(update.seq.to_string())
+                                        .event("update")
+                                        .data(data);
+                                    yield Ok::<_, Infallible>(event);
+                                }
+                                LiveEvent::TaskCreated(task) => {
+                                    let data = serde_json::to_string(&task).unwrap_or_default();
+                                    let event = Event::default().event("task_created").data(data);
+                                    yield Ok::<_, Infallible>(event);
+                                }
+                                LiveEvent::TaskUpdated(task) => {
+                                    let data = serde_json::to_string(&task).unwrap_or_default();
+                                    let event = Event::default().event("task_updated").data(data);
+                                    yield Ok::<_, Infallible>(event);
+                                }
+                                LiveEvent::WorkstreamCreated(workstream) => {
+                                    let data = serde_json::to_string(&workstream).unwrap_or_default();
+                                    let event = Event::default().event("workstream_created").data(data);
+                                    yield Ok::<_, Infallible>(event);
+                                }
+                                LiveEvent::WorkstreamUpdated(workstream) => {
+                                    let data = serde_json::to_string(&workstream).unwrap_or_default();
+                                    let event = Event::default().event("workstream_updated").data(data);
+                                    yield Ok::<_, Infallible>(event);
+                                }
+                            }
+                        }
+                        Err(tokio::sync::broadcast::error::RecvError::Lagged(n)) => {
+                            // Some messages were dropped. Inform the client via a comment-like event.
+                            tracing::warn!("SSE client lagged, missed {n} messages");
                             let event = Event::default()
-                                .id(update.seq.to_string())
-                                .event("update")
-                                .data(data);
+                                .event("lagged")
+                                .data(format!("{{\"missed\":{n}}}"));
                             yield Ok::<_, Infallible>(event);
                         }
-                        LiveEvent::TaskCreated(task) => {
-                            let data = serde_json::to_string(&task).unwrap_or_default();
-                            let event = Event::default().event("task_created").data(data);
-                            yield Ok::<_, Infallible>(event);
-                        }
-                        LiveEvent::TaskUpdated(task) => {
-                            let data = serde_json::to_string(&task).unwrap_or_default();
-                            let event = Event::default().event("task_updated").data(data);
-                            yield Ok::<_, Infallible>(event);
-                        }
-                        LiveEvent::WorkstreamCreated(workstream) => {
-                            let data = serde_json::to_string(&workstream).unwrap_or_default();
-                            let event = Event::default().event("workstream_created").data(data);
-                            yield Ok::<_, Infallible>(event);
-                        }
-                        LiveEvent::WorkstreamUpdated(workstream) => {
-                            let data = serde_json::to_string(&workstream).unwrap_or_default();
-                            let event = Event::default().event("workstream_updated").data(data);
-                            yield Ok::<_, Infallible>(event);
+                        Err(tokio::sync::broadcast::error::RecvError::Closed) => {
+                            // Sender dropped — server shutting down
+                            break;
                         }
                     }
-                }
-                Err(tokio::sync::broadcast::error::RecvError::Lagged(n)) => {
-                    // Some messages were dropped. Inform the client via a comment-like event.
-                    tracing::warn!("SSE client lagged, missed {n} messages");
-                    let event = Event::default()
-                        .event("lagged")
-                        .data(format!("{{\"missed\":{n}}}"));
-                    yield Ok::<_, Infallible>(event);
-                }
-                Err(tokio::sync::broadcast::error::RecvError::Closed) => {
-                    // Sender dropped — server shutting down
-                    break;
                 }
             }
         }

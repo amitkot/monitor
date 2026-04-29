@@ -32,6 +32,7 @@ async fn main() {
     tracing::info!(db = %config.database_url, "database initialized");
     let db = db::Db::new(pool);
     let service = Arc::new(services::AppService::new(db));
+    let shutdown_service = service.clone();
 
     // Build auth state
     let auth_state = Arc::new(AuthState {
@@ -48,7 +49,10 @@ async fn main() {
         .unwrap();
     tracing::info!("monitor-server listening on {}", config.bind_address);
     axum::serve(listener, app)
-        .with_graceful_shutdown(shutdown_signal())
+        .with_graceful_shutdown(async move {
+            shutdown_signal().await;
+            shutdown_service.shutdown();
+        })
         .await
         .unwrap();
 }

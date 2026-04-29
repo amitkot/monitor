@@ -3,3 +3,5 @@ monitor.db
 *.db
 *.sqlite
 *.sqlite3
+*-shm
+*-wal

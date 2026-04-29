@@ -1,4 +1,4 @@
-use tokio::sync::broadcast;
+use tokio::sync::{broadcast, watch};
 use uuid::Uuid;
 
 use monitor_common::api::{
@@ -54,12 +54,18 @@ pub type Result<T> = std::result::Result<T, ServiceError>;
 pub struct AppService {
     db: Db,
     tx: broadcast::Sender<LiveEvent>,
+    shutdown_tx: watch::Sender<bool>,
 }
 
 impl AppService {
     pub fn new(db: Db) -> Self {
         let (tx, _rx) = broadcast::channel(256);
-        Self { db, tx }
+        let (shutdown_tx, _shutdown_rx) = watch::channel(false);
+        Self {
+            db,
+            tx,
+            shutdown_tx,
+        }
     }
 
     // -----------------------------------------------------------------------
@@ -263,6 +269,14 @@ impl AppService {
 
     pub fn subscribe(&self) -> broadcast::Receiver<LiveEvent> {
         self.tx.subscribe()
+    }
+
+    pub fn subscribe_shutdown(&self) -> watch::Receiver<bool> {
+        self.shutdown_tx.subscribe()
+    }
+
+    pub fn shutdown(&self) {
+        let _ = self.shutdown_tx.send(true);
     }
 }
 
