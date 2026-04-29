@@ -68,12 +68,18 @@ struct FeedItem {
     update: Update,
     task: Option<Task>,
     workstream: Option<Workstream>,
+    data_json: Option<String>,
 }
 
 struct TaskFeed {
     task: Task,
     workstream: Option<Workstream>,
-    updates: Vec<Update>,
+    updates: Vec<FeedUpdate>,
+}
+
+struct FeedUpdate {
+    update: Update,
+    data_json: Option<String>,
 }
 
 #[derive(Template)]
@@ -236,6 +242,7 @@ async fn stream_page(
                 .cloned();
 
             FeedItem {
+                data_json: formatted_update_data(&update),
                 update,
                 task,
                 workstream,
@@ -260,7 +267,13 @@ async fn stream_page(
             Some(TaskFeed {
                 task,
                 workstream,
-                updates,
+                updates: updates
+                    .into_iter()
+                    .map(|update| FeedUpdate {
+                        data_json: formatted_update_data(&update),
+                        update,
+                    })
+                    .collect(),
             })
         })
         .collect();
@@ -269,12 +282,12 @@ async fn stream_page(
         let a_seq = a
             .updates
             .first()
-            .map(|update| update.seq)
+            .map(|feed_update| feed_update.update.seq)
             .unwrap_or_default();
         let b_seq = b
             .updates
             .first()
-            .map(|update| update.seq)
+            .map(|feed_update| feed_update.update.seq)
             .unwrap_or_default();
         b_seq.cmp(&a_seq)
     });
@@ -285,6 +298,13 @@ async fn stream_page(
         task_feeds,
     })
     .into_response()
+}
+
+fn formatted_update_data(update: &Update) -> Option<String> {
+    update
+        .data
+        .as_ref()
+        .and_then(|data| serde_json::to_string_pretty(data).ok())
 }
 
 // ---------------------------------------------------------------------------

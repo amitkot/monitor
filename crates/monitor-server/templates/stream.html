@@ -32,8 +32,48 @@
             <span class="badge badge-{{ feed.task.status }}">{{ feed.task.status }}</span>
         </div>
         <ul class="update-thread">
-            {% for update in feed.updates %}
-            {% include "_update_item.html" %}
+            {% for feed_update in feed.updates %}
+            <li class="update-item">
+                <div class="update-meta">
+                    <span>{{ feed_update.update.timestamp.format("%Y-%m-%d %H:%M:%S UTC") }}</span>
+                    <strong>{{ feed_update.update.source }}</strong>
+                    {% match feed_update.update.kind %}
+                        {% when Some with (k) %}
+                        <span class="badge badge-active">{{ k }}</span>
+                        {% when None %}
+                    {% endmatch %}
+                    {% match feed_update.update.level %}
+                        {% when Some with (lvl) %}
+                        <span class="badge level-{{ lvl }}">{{ lvl }}</span>
+                        {% when None %}
+                    {% endmatch %}
+                </div>
+                <div class="update-message">{{ feed_update.update.message }}</div>
+                <details class="update-details">
+                    <summary>Details</summary>
+                    <dl>
+                        <dt>Seq</dt>
+                        <dd>{{ feed_update.update.seq }}</dd>
+                        <dt>ID</dt>
+                        <dd>{{ feed_update.update.id }}</dd>
+                        <dt>Tags</dt>
+                        <dd>
+                            {% if feed_update.update.tags.is_empty() %}
+                            <span class="muted">None</span>
+                            {% else %}
+                            {% for tag in feed_update.update.tags %}
+                            <span class="tag">{{ tag }}</span>
+                            {% endfor %}
+                            {% endif %}
+                        </dd>
+                    </dl>
+                    {% match feed_update.data_json %}
+                        {% when Some with (json) %}
+                        <pre>{{ json }}</pre>
+                        {% when None %}
+                    {% endmatch %}
+                </details>
+            </li>
             {% endfor %}
         </ul>
     </section>
@@ -58,8 +98,48 @@
                 {% endmatch %}
             </div>
             <ul class="update-thread">
-                {% for update in feed.updates %}
-                {% include "_update_item.html" %}
+                {% for feed_update in feed.updates %}
+                <li class="update-item">
+                    <div class="update-meta">
+                        <span>{{ feed_update.update.timestamp.format("%Y-%m-%d %H:%M:%S UTC") }}</span>
+                        <strong>{{ feed_update.update.source }}</strong>
+                        {% match feed_update.update.kind %}
+                            {% when Some with (k) %}
+                            <span class="badge badge-active">{{ k }}</span>
+                            {% when None %}
+                        {% endmatch %}
+                        {% match feed_update.update.level %}
+                            {% when Some with (lvl) %}
+                            <span class="badge level-{{ lvl }}">{{ lvl }}</span>
+                            {% when None %}
+                        {% endmatch %}
+                    </div>
+                    <div class="update-message">{{ feed_update.update.message }}</div>
+                    <details class="update-details">
+                        <summary>Details</summary>
+                        <dl>
+                            <dt>Seq</dt>
+                            <dd>{{ feed_update.update.seq }}</dd>
+                            <dt>ID</dt>
+                            <dd>{{ feed_update.update.id }}</dd>
+                            <dt>Tags</dt>
+                            <dd>
+                                {% if feed_update.update.tags.is_empty() %}
+                                <span class="muted">None</span>
+                                {% else %}
+                                {% for tag in feed_update.update.tags %}
+                                <span class="tag">{{ tag }}</span>
+                                {% endfor %}
+                                {% endif %}
+                            </dd>
+                        </dl>
+                        {% match feed_update.data_json %}
+                            {% when Some with (json) %}
+                            <pre>{{ json }}</pre>
+                            {% when None %}
+                        {% endmatch %}
+                    </details>
+                </li>
                 {% endfor %}
             </ul>
         </section>
@@ -102,6 +182,30 @@
                     {% endmatch %}
                 </div>
                 <div class="update-message">{{ item.update.message }}</div>
+                <details class="update-details">
+                    <summary>Details</summary>
+                    <dl>
+                        <dt>Seq</dt>
+                        <dd>{{ item.update.seq }}</dd>
+                        <dt>ID</dt>
+                        <dd>{{ item.update.id }}</dd>
+                        <dt>Tags</dt>
+                        <dd>
+                            {% if item.update.tags.is_empty() %}
+                            <span class="muted">None</span>
+                            {% else %}
+                            {% for tag in item.update.tags %}
+                            <span class="tag">{{ tag }}</span>
+                            {% endfor %}
+                            {% endif %}
+                        </dd>
+                    </dl>
+                    {% match item.data_json %}
+                        {% when Some with (json) %}
+                        <pre>{{ json }}</pre>
+                        {% when None %}
+                    {% endmatch %}
+                </details>
             </li>
             {% endfor %}
         </ul>

@@ -190,6 +190,52 @@
             margin-bottom: 0.25rem;
         }
         .update-message { font-size: 0.9rem; }
+        .muted { color: var(--color-text-muted); }
+        .tag {
+            display: inline-block;
+            padding: 0.1rem 0.35rem;
+            border: 1px solid var(--color-border);
+            border-radius: 4px;
+            font-size: 0.75rem;
+            color: var(--color-text-muted);
+            margin-right: 0.25rem;
+            margin-bottom: 0.25rem;
+        }
+        .update-details {
+            margin-top: 0.5rem;
+            font-size: 0.82rem;
+            color: var(--color-text-muted);
+        }
+        .update-details summary {
+            cursor: pointer;
+            color: var(--color-primary);
+            font-weight: 600;
+            width: max-content;
+        }
+        .update-details dl {
+            display: grid;
+            grid-template-columns: max-content minmax(0, 1fr);
+            gap: 0.35rem 0.75rem;
+            margin-top: 0.5rem;
+        }
+        .update-details dt {
+            font-weight: 700;
+            color: var(--color-text);
+        }
+        .update-details dd {
+            overflow-wrap: anywhere;
+        }
+        .update-details pre {
+            margin-top: 0.5rem;
+            padding: 0.75rem;
+            background: var(--color-bg);
+            border: 1px solid var(--color-border);
+            border-radius: 6px;
+            color: var(--color-text);
+            font-size: 0.78rem;
+            overflow-x: auto;
+            white-space: pre-wrap;
+        }
         .feed-context {
             display: flex;
             align-items: center;
