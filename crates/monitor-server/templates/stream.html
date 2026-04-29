@@ -33,7 +33,7 @@
         </div>
         <ul class="update-thread">
             {% for feed_update in feed.updates %}
-            <li class="update-item">
+            <li class="update-item update-item-clickable" tabindex="0" aria-expanded="false" data-update-toggle>
                 <div class="update-meta">
                     <span>{{ feed_update.update.timestamp.format("%Y-%m-%d %H:%M:%S UTC") }}</span>
                     <strong>{{ feed_update.update.source }}</strong>
@@ -49,8 +49,7 @@
                     {% endmatch %}
                 </div>
                 <div class="update-message">{{ feed_update.update.message }}</div>
-                <details class="update-details">
-                    <summary>Details</summary>
+                <div class="update-details" hidden>
                     <dl>
                         <dt>Seq</dt>
                         <dd>{{ feed_update.update.seq }}</dd>
@@ -72,7 +71,7 @@
                         <pre>{{ json }}</pre>
                         {% when None %}
                     {% endmatch %}
-                </details>
+                </div>
             </li>
             {% endfor %}
         </ul>
@@ -99,7 +98,7 @@
             </div>
             <ul class="update-thread">
                 {% for feed_update in feed.updates %}
-                <li class="update-item">
+                <li class="update-item update-item-clickable" tabindex="0" aria-expanded="false" data-update-toggle>
                     <div class="update-meta">
                         <span>{{ feed_update.update.timestamp.format("%Y-%m-%d %H:%M:%S UTC") }}</span>
                         <strong>{{ feed_update.update.source }}</strong>
@@ -115,8 +114,7 @@
                         {% endmatch %}
                     </div>
                     <div class="update-message">{{ feed_update.update.message }}</div>
-                    <details class="update-details">
-                        <summary>Details</summary>
+                    <div class="update-details" hidden>
                         <dl>
                             <dt>Seq</dt>
                             <dd>{{ feed_update.update.seq }}</dd>
@@ -138,7 +136,7 @@
                             <pre>{{ json }}</pre>
                             {% when None %}
                         {% endmatch %}
-                    </details>
+                    </div>
                 </li>
                 {% endfor %}
             </ul>
@@ -153,7 +151,7 @@
         {% else %}
         <ul class="update-thread">
             {% for item in items %}
-            <li class="update-item">
+            <li class="update-item update-item-clickable" tabindex="0" aria-expanded="false" data-update-toggle>
                 <div class="feed-context">
                     {% match item.task %}
                         {% when Some with (task) %}
@@ -182,8 +180,7 @@
                     {% endmatch %}
                 </div>
                 <div class="update-message">{{ item.update.message }}</div>
-                <details class="update-details">
-                    <summary>Details</summary>
+                <div class="update-details" hidden>
                     <dl>
                         <dt>Seq</dt>
                         <dd>{{ item.update.seq }}</dd>
@@ -205,7 +202,7 @@
                         <pre>{{ json }}</pre>
                         {% when None %}
                     {% endmatch %}
-                </details>
+                </div>
             </li>
             {% endfor %}
         </ul>
@@ -231,6 +228,37 @@
             window.location.reload();
         }, 300);
     }
+
+    function shouldIgnoreToggle(target) {
+        if (!(target instanceof Element)) return false;
+        return target.closest('a, button, input, textarea, select');
+    }
+
+    function toggleUpdateItem(item) {
+        var details = item.querySelector('.update-details');
+        if (!details) return;
+
+        var expanded = item.getAttribute('aria-expanded') === 'true';
+        item.setAttribute('aria-expanded', expanded ? 'false' : 'true');
+        details.hidden = expanded;
+    }
+
+    document.addEventListener('click', function(event) {
+        var item = event.target.closest('[data-update-toggle]');
+        if (!item || shouldIgnoreToggle(event.target)) return;
+
+        toggleUpdateItem(item);
+    });
+
+    document.addEventListener('keydown', function(event) {
+        if (event.key !== 'Enter' && event.key !== ' ') return;
+
+        var item = event.target.closest('[data-update-toggle]');
+        if (!item || event.target !== item) return;
+
+        event.preventDefault();
+        toggleUpdateItem(item);
+    });
 
     source.addEventListener('update', scheduleReload);
     source.addEventListener('task_created', scheduleReload);
