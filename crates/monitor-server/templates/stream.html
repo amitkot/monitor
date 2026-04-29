@@ -3,48 +3,111 @@
 {% block title %}Stream - Monitor{% endblock %}
 
 {% block content %}
-<h1>Stream</h1>
+<div class="page-header">
+    <h1>Stream</h1>
+    <div class="stream-tabs" aria-label="Stream view">
+        <a href="/stream?view=chrono" class="{% if view == "chrono" %}active{% endif %}">Chronological</a>
+        <a href="/stream?view=grouped" class="{% if view == "grouped" %}active{% endif %}">Grouped</a>
+        <a href="/stream?view=lanes" class="{% if view == "lanes" %}active{% endif %}">Lanes</a>
+    </div>
+</div>
 
-<div class="card">
-    {% if items.is_empty() %}
-    <p style="color: var(--color-text-muted);">No updates yet.</p>
+{% if view == "grouped" %}
+    {% if task_feeds.is_empty() %}
+    <div class="card">
+        <p style="color: var(--color-text-muted);">No updates yet.</p>
+    </div>
     {% else %}
-    <ul class="update-thread">
-        {% for item in items %}
-        <li class="update-item">
-            <div class="feed-context">
-                {% match item.task %}
-                    {% when Some with (task) %}
-                    <a href="/tasks/{{ task.id }}">{{ task.name }}</a>
-                    {% when None %}
-                    <span>Unknown task</span>
-                {% endmatch %}
-                {% match item.workstream %}
+    {% for feed in task_feeds %}
+    <section class="stream-group">
+        <div class="stream-group-header">
+            <div>
+                <h2><a href="/tasks/{{ feed.task.id }}">{{ feed.task.name }}</a></h2>
+                {% match feed.workstream %}
                     {% when Some with (workstream) %}
                     <span class="feed-workstream">{{ workstream.name }}</span>
                     {% when None %}
                 {% endmatch %}
             </div>
-            <div class="update-meta">
-                <span>{{ item.update.timestamp.format("%Y-%m-%d %H:%M:%S UTC") }}</span>
-                <strong>{{ item.update.source }}</strong>
-                {% match item.update.kind %}
-                    {% when Some with (k) %}
-                    <span class="badge badge-active">{{ k }}</span>
-                    {% when None %}
-                {% endmatch %}
-                {% match item.update.level %}
-                    {% when Some with (lvl) %}
-                    <span class="badge level-{{ lvl }}">{{ lvl }}</span>
+            <span class="badge badge-{{ feed.task.status }}">{{ feed.task.status }}</span>
+        </div>
+        <ul class="update-thread">
+            {% for update in feed.updates %}
+            {% include "_update_item.html" %}
+            {% endfor %}
+        </ul>
+    </section>
+    {% endfor %}
+    {% endif %}
+{% else if view == "lanes" %}
+    {% if task_feeds.is_empty() %}
+    <div class="card">
+        <p style="color: var(--color-text-muted);">No updates yet.</p>
+    </div>
+    {% else %}
+    <div class="stream-lanes">
+        {% for feed in task_feeds %}
+        <section class="stream-lane">
+            <div class="stream-lane-header">
+                <a href="/tasks/{{ feed.task.id }}">{{ feed.task.name }}</a>
+                <span class="badge badge-{{ feed.task.status }}">{{ feed.task.status }}</span>
+                {% match feed.workstream %}
+                    {% when Some with (workstream) %}
+                    <span class="feed-workstream">{{ workstream.name }}</span>
                     {% when None %}
                 {% endmatch %}
             </div>
-            <div class="update-message">{{ item.update.message }}</div>
-        </li>
+            <ul class="update-thread">
+                {% for update in feed.updates %}
+                {% include "_update_item.html" %}
+                {% endfor %}
+            </ul>
+        </section>
         {% endfor %}
-    </ul>
+    </div>
     {% endif %}
-</div>
+{% else %}
+    <div class="card">
+        {% if items.is_empty() %}
+        <p style="color: var(--color-text-muted);">No updates yet.</p>
+        {% else %}
+        <ul class="update-thread">
+            {% for item in items %}
+            <li class="update-item">
+                <div class="feed-context">
+                    {% match item.task %}
+                        {% when Some with (task) %}
+                        <a href="/tasks/{{ task.id }}">{{ task.name }}</a>
+                        {% when None %}
+                        <span>Unknown task</span>
+                    {% endmatch %}
+                    {% match item.workstream %}
+                        {% when Some with (workstream) %}
+                        <span class="feed-workstream">{{ workstream.name }}</span>
+                        {% when None %}
+                    {% endmatch %}
+                </div>
+                <div class="update-meta">
+                    <span>{{ item.update.timestamp.format("%Y-%m-%d %H:%M:%S UTC") }}</span>
+                    <strong>{{ item.update.source }}</strong>
+                    {% match item.update.kind %}
+                        {% when Some with (k) %}
+                        <span class="badge badge-active">{{ k }}</span>
+                        {% when None %}
+                    {% endmatch %}
+                    {% match item.update.level %}
+                        {% when Some with (lvl) %}
+                        <span class="badge level-{{ lvl }}">{{ lvl }}</span>
+                        {% when None %}
+                    {% endmatch %}
+                </div>
+                <div class="update-message">{{ item.update.message }}</div>
+            </li>
+            {% endfor %}
+        </ul>
+        {% endif %}
+    </div>
+{% endif %}
 {% endblock %}
 
 {% block extra_scripts %}

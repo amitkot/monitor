@@ -3,12 +3,13 @@ use std::sync::Arc;
 
 use askama::Template;
 use axum::{
-    extract::{Path, State},
+    extract::{Path, Query, State},
     http::{header, StatusCode},
     response::{IntoResponse, Redirect, Response},
     routing::get,
     Router,
 };
+use serde::Deserialize;
 use uuid::Uuid;
 
 use monitor_common::{Task, Update, Workstream};
@@ -69,10 +70,23 @@ struct FeedItem {
     workstream: Option<Workstream>,
 }
 
+struct TaskFeed {
+    task: Task,
+    workstream: Option<Workstream>,
+    updates: Vec<Update>,
+}
+
 #[derive(Template)]
 #[template(path = "stream.html")]
 struct StreamTemplate {
+    view: String,
     items: Vec<FeedItem>,
+    task_feeds: Vec<TaskFeed>,
+}
+
+#[derive(Deserialize)]
+struct StreamQuery {
+    view: Option<String>,
 }
 
 // ---------------------------------------------------------------------------
@@ -170,7 +184,17 @@ async fn task_detail(
     .into_response()
 }
 
-async fn stream_page(State(service): State<Arc<AppService>>) -> impl IntoResponse {
+async fn stream_page(
+    State(service): State<Arc<AppService>>,
+    Query(query): Query<StreamQuery>,
+) -> impl IntoResponse {
+    let view = match query.view.as_deref() {
+        Some("grouped") => "grouped",
+        Some("lanes") => "lanes",
+        _ => "chrono",
+    }
+    .to_string();
+
     let mut updates = match service.list_updates(None, None, None, &[], None, 200).await {
         Ok(updates) => updates,
         Err(e) => {
@@ -201,8 +225,9 @@ async fn stream_page(State(service): State<Arc<AppService>>) -> impl IntoRespons
         .map(|workstream| (workstream.id, workstream))
         .collect();
 
-    let items = updates
-        .into_iter()
+    let items: Vec<FeedItem> = updates
+        .iter()
+        .cloned()
         .map(|update| {
             let task = tasks_by_id.get(&update.task_id).cloned();
             let workstream = task
@@ -218,7 +243,48 @@ async fn stream_page(State(service): State<Arc<AppService>>) -> impl IntoRespons
         })
         .collect();
 
-    HtmlTemplate(StreamTemplate { items }).into_response()
+    let mut grouped_updates: HashMap<Uuid, Vec<Update>> = HashMap::new();
+    for update in updates {
+        grouped_updates
+            .entry(update.task_id)
+            .or_default()
+            .push(update);
+    }
+
+    let mut task_feeds: Vec<TaskFeed> = grouped_updates
+        .into_iter()
+        .filter_map(|(task_id, updates)| {
+            let task = tasks_by_id.get(&task_id)?.clone();
+            let workstream = workstreams_by_id.get(&task.workstream_id).cloned();
+
+            Some(TaskFeed {
+                task,
+                workstream,
+                updates,
+            })
+        })
+        .collect();
+
+    task_feeds.sort_by(|a, b| {
+        let a_seq = a
+            .updates
+            .first()
+            .map(|update| update.seq)
+            .unwrap_or_default();
+        let b_seq = b
+            .updates
+            .first()
+            .map(|update| update.seq)
+            .unwrap_or_default();
+        b_seq.cmp(&a_seq)
+    });
+
+    HtmlTemplate(StreamTemplate {
+        view,
+        items,
+        task_feeds,
+    })
+    .into_response()
 }
 
 // ---------------------------------------------------------------------------

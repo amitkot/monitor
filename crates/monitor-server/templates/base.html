@@ -59,6 +59,15 @@
         h1 { font-size: 1.5rem; margin-bottom: 1rem; }
         h2 { font-size: 1.2rem; margin-bottom: 0.75rem; }
         h3 { font-size: 1rem; margin-bottom: 0.5rem; }
+        .page-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+            margin-bottom: 1rem;
+            flex-wrap: wrap;
+        }
+        .page-header h1 { margin-bottom: 0; }
 
         /* Cards */
         .card {
@@ -198,11 +207,84 @@
             color: var(--color-text-muted);
             font-size: 0.8rem;
         }
+        .stream-tabs {
+            display: flex;
+            gap: 0.25rem;
+            border: 1px solid var(--color-border);
+            border-radius: 6px;
+            padding: 0.2rem;
+            background: var(--color-surface);
+        }
+        .stream-tabs a {
+            color: var(--color-text-muted);
+            text-decoration: none;
+            padding: 0.35rem 0.65rem;
+            border-radius: 4px;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+        .stream-tabs a.active {
+            color: #fff;
+            background: var(--color-primary);
+        }
+        .stream-group {
+            background: var(--color-surface);
+            border: 1px solid var(--color-border);
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
+        .stream-group-header {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 1rem;
+            margin-bottom: 0.75rem;
+        }
+        .stream-group-header h2 { margin-bottom: 0.15rem; }
+        .stream-group-header a,
+        .stream-lane-header a {
+            color: var(--color-primary);
+            text-decoration: none;
+        }
+        .stream-group-header a:hover,
+        .stream-lane-header a:hover { text-decoration: underline; }
+        .stream-lanes {
+            display: grid;
+            grid-auto-flow: column;
+            grid-auto-columns: minmax(280px, 360px);
+            gap: 1rem;
+            overflow-x: auto;
+            padding-bottom: 0.5rem;
+        }
+        .stream-lane {
+            background: var(--color-surface);
+            border: 1px solid var(--color-border);
+            border-radius: 8px;
+            padding: 1rem;
+            max-height: calc(100vh - 9rem);
+            overflow-y: auto;
+        }
+        .stream-lane-header {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 0.35rem;
+            margin-bottom: 0.75rem;
+            position: sticky;
+            top: -1rem;
+            background: var(--color-surface);
+            padding-top: 0.25rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid var(--color-border);
+        }
 
         /* Responsive */
         @media (max-width: 600px) {
             .form-row { flex-direction: column; }
             .task-summary { max-width: 100%; margin-left: 0; }
+            .stream-tabs { width: 100%; }
+            .stream-tabs a { flex: 1; text-align: center; }
         }
     </style>
     {% block extra_head %}{% endblock %}
