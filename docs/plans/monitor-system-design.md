@@ -460,7 +460,7 @@ If a future background source such as NATS is added, it should feed these servic
 - `GET /api/tasks` returns current task state
 - `GET /api/updates?task_id=...` returns update history
 - `GET /api/stream` emits new updates with durable sequence ids
-- `cargo run -p monitor-cli -- update manual --task <id> --message "test"` sends a manual update
+- `monitor-cli update manual --task <id> --message "test"` sends a manual update
 
 ## Future Considerations
 

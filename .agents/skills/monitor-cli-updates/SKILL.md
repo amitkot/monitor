@@ -38,6 +38,29 @@ monitor-cli --server http://127.0.0.1:3000 --token <bearer-token> task list
 
 The CLI prints JSON. Use the returned `id` values for later commands. If `jq` is available, capture IDs with `jq -r .id`; otherwise read the JSON output directly.
 
+## Output Modes
+
+Use the default output mode when you need returned IDs or diagnostics.
+
+Use `--quiet`, or its alias `--silent`, when output would be noisy but the caller should still see a non-zero exit status on failure:
+
+```bash
+monitor-cli --quiet task list
+```
+
+For hooks and background integrations where monitor delivery must never block the calling tool, combine `--quiet` with shell-level error suppression:
+
+```bash
+monitor-cli --quiet update manual \
+  --task <TASK_ID> \
+  --message "Claude hook observed a session event." \
+  --kind claude_hook \
+  --tags claude,hook \
+  || true
+```
+
+Prefer `|| true` over a pipe to `true`; it preserves the intended command structure and avoids pipe-related surprises.
+
 ## Help Discovery
 
 Use `--help` whenever command shape, option names, or allowed values are uncertain. Start broad, then drill into the exact subcommand:

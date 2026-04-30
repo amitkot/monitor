@@ -38,6 +38,12 @@ cargo run -p monitor-server
 
 By default it listens on `http://127.0.0.1:3000` and creates `monitor.db` in the repo root.
 
+Install the CLI once:
+
+```bash
+cargo install --path crates/monitor-cli
+```
+
 Open the web UI:
 
 ```text
@@ -53,20 +59,20 @@ http://127.0.0.1:3000/stream
 Create a workstream:
 
 ```bash
-cargo run -p monitor-cli -- workstream create "Monitor MVP"
+monitor-cli workstream create "Monitor MVP"
 ```
 
 Create a task:
 
 ```bash
-cargo run -p monitor-cli -- task create "SSE replay support" \
+monitor-cli task create "SSE replay support" \
   --workstream <WORKSTREAM_ID>
 ```
 
 Send a manual update:
 
 ```bash
-cargo run -p monitor-cli -- update manual \
+monitor-cli update manual \
   --task <TASK_ID> \
   --message "Implemented initial SSE path" \
   --kind manual_note \
@@ -77,7 +83,7 @@ cargo run -p monitor-cli -- update manual \
 List tasks:
 
 ```bash
-cargo run -p monitor-cli -- task list
+monitor-cli task list
 ```
 
 ## Configuration
@@ -113,7 +119,7 @@ For CLI usage against an authenticated server:
 
 ```bash
 export MONITOR_TOKEN=dev-secret-token
-cargo run -p monitor-cli -- workstream list
+monitor-cli workstream list
 ```
 
 ## CLI
@@ -122,21 +128,36 @@ Common commands:
 
 ```bash
 # Workstreams
-cargo run -p monitor-cli -- workstream create "My Workstream"
-cargo run -p monitor-cli -- workstream list --include-archived
-cargo run -p monitor-cli -- workstream update <WORKSTREAM_ID> --status archived
+monitor-cli workstream create "My Workstream"
+monitor-cli workstream list --include-archived
+monitor-cli workstream update <WORKSTREAM_ID> --status archived
 
 # Tasks
-cargo run -p monitor-cli -- task create "My Task" --workstream <WORKSTREAM_ID>
-cargo run -p monitor-cli -- task list --workstream <WORKSTREAM_ID>
-cargo run -p monitor-cli -- task update <TASK_ID> --status blocked
-cargo run -p monitor-cli -- task update <TASK_ID> --summary "Waiting on vendor response"
+monitor-cli task create "My Task" --workstream <WORKSTREAM_ID>
+monitor-cli task list --workstream <WORKSTREAM_ID>
+monitor-cli task update <TASK_ID> --status blocked
+monitor-cli task update <TASK_ID> --summary "Waiting on vendor response"
 
 # Manual updates
-cargo run -p monitor-cli -- update manual --task <TASK_ID> --message "Progress note"
+monitor-cli update manual --task <TASK_ID> --message "Progress note"
 ```
 
 The CLI prints JSON responses so it can be used in scripts.
+
+Global output flags:
+
+- `--quiet`, also available as `--silent`, suppresses all stdout/stderr output but preserves the normal exit status.
+
+Claude hook style example:
+
+```bash
+monitor-cli --quiet update manual \
+  --task <TASK_ID> \
+  --message "Claude hook observed a session event" \
+  --kind claude_hook \
+  --tags claude,hook \
+  || true
+```
 
 ## API Overview
 
@@ -216,7 +237,7 @@ cargo run -p monitor-server
 ### 2. Create a workstream
 
 ```bash
-cargo run -p monitor-cli -- workstream create "E2E Workstream"
+monitor-cli workstream create "E2E Workstream"
 ```
 
 Save the returned `id`.
@@ -224,7 +245,7 @@ Save the returned `id`.
 ### 3. Create a task
 
 ```bash
-cargo run -p monitor-cli -- task create "E2E Task" --workstream <WORKSTREAM_ID>
+monitor-cli task create "E2E Task" --workstream <WORKSTREAM_ID>
 ```
 
 Save the returned `id`.
@@ -273,7 +294,7 @@ curl -N \
 ### 6. Send a manual update
 
 ```bash
-cargo run -p monitor-cli -- update manual \
+monitor-cli update manual \
   --task <TASK_ID> \
   --message "Manual E2E update" \
   --kind manual_note \
@@ -289,8 +310,8 @@ Verify:
 ### 7. Update task state
 
 ```bash
-cargo run -p monitor-cli -- task update <TASK_ID> --status blocked
-cargo run -p monitor-cli -- task update <TASK_ID> --summary "Blocked during e2e verification"
+monitor-cli task update <TASK_ID> --status blocked
+monitor-cli task update <TASK_ID> --summary "Blocked during e2e verification"
 ```
 
 Verify:
@@ -303,8 +324,8 @@ Verify:
 Send two more updates:
 
 ```bash
-cargo run -p monitor-cli -- update manual --task <TASK_ID> --message "Update one"
-cargo run -p monitor-cli -- update manual --task <TASK_ID> --message "Update two"
+monitor-cli update manual --task <TASK_ID> --message "Update one"
+monitor-cli update manual --task <TASK_ID> --message "Update two"
 ```
 
 Then query history:

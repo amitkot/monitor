@@ -23,6 +23,10 @@ struct Cli {
     #[arg(long, env = "MONITOR_TOKEN")]
     token: Option<String>,
 
+    /// Suppress all stdout/stderr output while preserving exit status
+    #[arg(long, visible_alias = "silent", global = true, default_value_t = false)]
+    quiet: bool,
+
     #[command(subcommand)]
     command: Commands,
 }
@@ -222,17 +226,58 @@ fn parse_update_level(s: &str) -> Result<monitor_common::UpdateLevel, String> {
 async fn main() {
     let cli = Cli::parse();
     let client = client::MonitorClient::new(cli.server, cli.token);
+    let output = OutputOptions { quiet: cli.quiet };
 
     let result = run(client, cli.command).await;
+    let outcome = render_result(result, output);
+    if let Some(stdout) = outcome.stdout {
+        println!("{stdout}");
+    }
+    if let Some(stderr) = outcome.stderr {
+        eprintln!("{stderr}");
+    }
+    if outcome.exit_code != 0 {
+        process::exit(outcome.exit_code);
+    }
+}
+
+#[derive(Clone, Copy)]
+struct OutputOptions {
+    quiet: bool,
+}
+
+impl OutputOptions {
+    fn suppress_output(self) -> bool {
+        self.quiet
+    }
+}
+
+struct CliOutcome {
+    stdout: Option<String>,
+    stderr: Option<String>,
+    exit_code: i32,
+}
+
+fn render_result(result: Result<serde_json::Value, String>, output: OutputOptions) -> CliOutcome {
     match result {
-        Ok(value) => {
-            let formatted = serde_json::to_string_pretty(&value).unwrap_or_default();
-            println!("{formatted}");
-        }
-        Err(msg) => {
-            eprintln!("Error: {msg}");
-            process::exit(1);
-        }
+        Ok(value) => CliOutcome {
+            stdout: if output.suppress_output() {
+                None
+            } else {
+                Some(serde_json::to_string_pretty(&value).unwrap_or_default())
+            },
+            stderr: None,
+            exit_code: 0,
+        },
+        Err(msg) => CliOutcome {
+            stdout: None,
+            stderr: if output.suppress_output() {
+                None
+            } else {
+                Some(format!("Error: {msg}"))
+            },
+            exit_code: 1,
+        },
     }
 }
 
@@ -383,5 +428,40 @@ async fn run_update(
             };
             client.post("/api/updates/manual", &body).await
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use clap::Parser;
+    use serde_json::json;
+
+    #[test]
+    fn quiet_suppresses_success_output_but_preserves_success_exit() {
+        let outcome = render_result(Ok(json!({"id": "task-1"})), OutputOptions { quiet: true });
+
+        assert!(outcome.stdout.is_none());
+        assert!(outcome.stderr.is_none());
+        assert_eq!(outcome.exit_code, 0);
+    }
+
+    #[test]
+    fn quiet_suppresses_error_output_but_preserves_failure_exit() {
+        let outcome = render_result(
+            Err("request failed".to_string()),
+            OutputOptions { quiet: true },
+        );
+
+        assert!(outcome.stdout.is_none());
+        assert!(outcome.stderr.is_none());
+        assert_eq!(outcome.exit_code, 1);
+    }
+
+    #[test]
+    fn silent_alias_sets_quiet() {
+        let cli = Cli::parse_from(["monitor-cli", "--silent", "task", "list"]);
+
+        assert!(cli.quiet);
     }
 }
