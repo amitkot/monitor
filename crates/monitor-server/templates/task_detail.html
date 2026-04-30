@@ -110,9 +110,11 @@
             var metaDiv = document.createElement('div');
             metaDiv.className = 'update-meta';
 
-            var tsSpan = document.createElement('span');
-            tsSpan.textContent = new Date(update.timestamp).toLocaleString();
-            metaDiv.appendChild(tsSpan);
+            var timeEl = document.createElement('time');
+            timeEl.dateTime = update.timestamp;
+            timeEl.setAttribute('data-local-time', '');
+            timeEl.textContent = update.timestamp;
+            metaDiv.appendChild(timeEl);
 
             var sourceStrong = document.createElement('strong');
             sourceStrong.textContent = update.source;
@@ -137,10 +139,14 @@
             // Build message section safely
             var msgDiv = document.createElement('div');
             msgDiv.className = 'update-message';
+            msgDiv.setAttribute('data-format-message', '');
             msgDiv.textContent = update.message;
             li.appendChild(msgDiv);
 
             thread.prepend(li);
+            if (window.monitorEnhanceContent) {
+                window.monitorEnhanceContent(li);
+            }
 
             // Remove "No updates yet" message if present
             var noUpdates = thread.parentElement.querySelector('p');

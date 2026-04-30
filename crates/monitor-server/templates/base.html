@@ -25,7 +25,8 @@
         }
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+                "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif;
             background: var(--color-bg);
             color: var(--color-text);
             line-height: 1.5;
@@ -208,7 +209,10 @@
             color: var(--color-text-muted);
             margin-bottom: 0.25rem;
         }
-        .update-message { font-size: 0.9rem; }
+        .update-message {
+            font-size: 0.9rem;
+            white-space: pre-wrap;
+        }
         .muted { color: var(--color-text-muted); }
         .tag {
             display: inline-block;
@@ -357,6 +361,83 @@
     <div class="container">
         {% block content %}{% endblock %}
     </div>
+    <script>
+    (function() {
+        var emojiShortcodes = {
+            bug: '🐛',
+            check: '✅',
+            construction: '🚧',
+            error: '❌',
+            eyes: '👀',
+            fire: '🔥',
+            hourglass: '⏳',
+            memo: '📝',
+            package: '📦',
+            rocket: '🚀',
+            sparkles: '✨',
+            test_tube: '🧪',
+            warning: '⚠️',
+            white_check_mark: '✅',
+            wrench: '🔧',
+            x: '❌'
+        };
+
+        var localTimeFormatter = new Intl.DateTimeFormat(undefined, {
+            year: 'numeric',
+            month: 'short',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            timeZoneName: 'short'
+        });
+
+        function utcLabel(date) {
+            return date.toISOString().replace('T', ' ').replace(/\.\d{3}Z$/, ' UTC');
+        }
+
+        function formatLocalTimes(root) {
+            root.querySelectorAll('time[data-local-time]').forEach(function(el) {
+                var date = new Date(el.dateTime || el.getAttribute('datetime'));
+                if (Number.isNaN(date.getTime())) return;
+
+                el.textContent = localTimeFormatter.format(date);
+                el.title = 'UTC: ' + utcLabel(date);
+            });
+        }
+
+        function formatMessageText(text) {
+            return text.replace(/:([a-z0-9_+-]+):/g, function(match, code) {
+                return emojiShortcodes[code] || match;
+            });
+        }
+
+        function formatMessages(root) {
+            root.querySelectorAll('[data-format-message]').forEach(function(el) {
+                if (el.dataset.messageFormatted === 'true') return;
+
+                el.textContent = formatMessageText(el.textContent);
+                el.dataset.messageFormatted = 'true';
+            });
+        }
+
+        function enhanceContent(root) {
+            formatLocalTimes(root);
+            formatMessages(root);
+        }
+
+        window.monitorEnhanceContent = enhanceContent;
+        window.monitorFormatLocalTimes = formatLocalTimes;
+        window.monitorFormatMessageText = formatMessageText;
+
+        document.addEventListener('DOMContentLoaded', function() {
+            enhanceContent(document);
+        });
+        document.body.addEventListener('htmx:afterSwap', function(event) {
+            enhanceContent(event.target);
+        });
+    })();
+    </script>
     {% block extra_scripts %}{% endblock %}
 </body>
 </html>

@@ -1,6 +1,6 @@
 <li class="update-item">
     <div class="update-meta">
-        <span>{{ update.timestamp.format("%Y-%m-%d %H:%M:%S UTC") }}</span>
+        <time datetime="{{ update.timestamp.format("%+") }}" data-local-time>{{ update.timestamp.format("%Y-%m-%d %H:%M:%S UTC") }}</time>
         <strong>{{ update.source }}</strong>
         {% match update.kind %}
             {% when Some with (k) %}
@@ -13,5 +13,5 @@
             {% when None %}
         {% endmatch %}
     </div>
-    <div class="update-message">{{ update.message }}</div>
+    <div class="update-message" data-format-message>{{ update.message }}</div>
 </li>

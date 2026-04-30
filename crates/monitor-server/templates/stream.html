@@ -35,7 +35,7 @@
             {% for feed_update in feed.updates %}
             <li class="update-item update-item-clickable" tabindex="0" aria-expanded="false" data-update-toggle>
                 <div class="update-meta">
-                    <span>{{ feed_update.update.timestamp.format("%Y-%m-%d %H:%M:%S UTC") }}</span>
+                    <time datetime="{{ feed_update.update.timestamp.format("%+") }}" data-local-time>{{ feed_update.update.timestamp.format("%Y-%m-%d %H:%M:%S UTC") }}</time>
                     <strong>{{ feed_update.update.source }}</strong>
                     {% match feed_update.update.kind %}
                         {% when Some with (k) %}
@@ -48,7 +48,7 @@
                         {% when None %}
                     {% endmatch %}
                 </div>
-                <div class="update-message">{{ feed_update.update.message }}</div>
+                <div class="update-message" data-format-message>{{ feed_update.update.message }}</div>
                 <div class="update-details" hidden>
                     <dl>
                         <dt>Seq</dt>
@@ -100,7 +100,7 @@
                 {% for feed_update in feed.updates %}
                 <li class="update-item update-item-clickable" tabindex="0" aria-expanded="false" data-update-toggle>
                     <div class="update-meta">
-                        <span>{{ feed_update.update.timestamp.format("%Y-%m-%d %H:%M:%S UTC") }}</span>
+                        <time datetime="{{ feed_update.update.timestamp.format("%+") }}" data-local-time>{{ feed_update.update.timestamp.format("%Y-%m-%d %H:%M:%S UTC") }}</time>
                         <strong>{{ feed_update.update.source }}</strong>
                         {% match feed_update.update.kind %}
                             {% when Some with (k) %}
@@ -113,7 +113,7 @@
                             {% when None %}
                         {% endmatch %}
                     </div>
-                    <div class="update-message">{{ feed_update.update.message }}</div>
+                    <div class="update-message" data-format-message>{{ feed_update.update.message }}</div>
                     <div class="update-details" hidden>
                         <dl>
                             <dt>Seq</dt>
@@ -166,7 +166,7 @@
                     {% endmatch %}
                 </div>
                 <div class="update-meta">
-                    <span>{{ item.update.timestamp.format("%Y-%m-%d %H:%M:%S UTC") }}</span>
+                    <time datetime="{{ item.update.timestamp.format("%+") }}" data-local-time>{{ item.update.timestamp.format("%Y-%m-%d %H:%M:%S UTC") }}</time>
                     <strong>{{ item.update.source }}</strong>
                     {% match item.update.kind %}
                         {% when Some with (k) %}
@@ -179,7 +179,7 @@
                         {% when None %}
                     {% endmatch %}
                 </div>
-                <div class="update-message">{{ item.update.message }}</div>
+                <div class="update-message" data-format-message>{{ item.update.message }}</div>
                 <div class="update-details" hidden>
                     <dl>
                         <dt>Seq</dt>
