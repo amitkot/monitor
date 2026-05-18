@@ -86,6 +86,7 @@ struct FeedUpdate {
 #[template(path = "stream.html")]
 struct StreamTemplate {
     view: String,
+    sort_by_latest: bool,
     items: Vec<FeedItem>,
     task_feeds: Vec<TaskFeed>,
 }
@@ -93,6 +94,7 @@ struct StreamTemplate {
 #[derive(Deserialize)]
 struct StreamQuery {
     view: Option<String>,
+    sort: Option<String>,
 }
 
 // ---------------------------------------------------------------------------
@@ -200,6 +202,7 @@ async fn stream_page(
         _ => "chrono",
     }
     .to_string();
+    let sort_by_latest = matches!(query.sort.as_deref(), Some("latest"));
 
     let mut updates = match service.list_updates(None, None, None, &[], None, 200).await {
         Ok(updates) => updates,
@@ -278,22 +281,33 @@ async fn stream_page(
         })
         .collect();
 
-    task_feeds.sort_by(|a, b| {
-        let a_seq = a
-            .updates
-            .first()
-            .map(|feed_update| feed_update.update.seq)
-            .unwrap_or_default();
-        let b_seq = b
-            .updates
-            .first()
-            .map(|feed_update| feed_update.update.seq)
-            .unwrap_or_default();
-        b_seq.cmp(&a_seq)
-    });
+    if view == "lanes" && !sort_by_latest {
+        task_feeds.sort_by(|a, b| {
+            a.task
+                .created_at
+                .cmp(&b.task.created_at)
+                .then_with(|| a.task.name.cmp(&b.task.name))
+                .then_with(|| a.task.id.cmp(&b.task.id))
+        });
+    } else {
+        task_feeds.sort_by(|a, b| {
+            let a_seq = a
+                .updates
+                .first()
+                .map(|feed_update| feed_update.update.seq)
+                .unwrap_or_default();
+            let b_seq = b
+                .updates
+                .first()
+                .map(|feed_update| feed_update.update.seq)
+                .unwrap_or_default();
+            b_seq.cmp(&a_seq)
+        });
+    }
 
     HtmlTemplate(StreamTemplate {
         view,
+        sort_by_latest,
         items,
         task_feeds,
     })

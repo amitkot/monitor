@@ -134,7 +134,7 @@ impl AppService {
         workstream_id: Option<Uuid>,
         status: Option<TaskStatus>,
     ) -> Result<Vec<Task>> {
-        Ok(self.db.list_tasks(workstream_id, status).await?)
+        Ok(self.db.list_tasks(workstream_id, status, false).await?)
     }
 
     pub async fn get_task(&self, id: Uuid) -> Result<Option<Task>> {
@@ -419,6 +419,7 @@ mod tests {
                     status: None,
                     summary_text: None,
                     summary_source: None,
+                    hidden: None,
                     metadata: None,
                 },
             )
@@ -487,6 +488,7 @@ mod tests {
                     status: Some(TaskStatus::Done),
                     summary_text: None,
                     summary_source: None,
+                    hidden: None,
                     metadata: None,
                 },
             )

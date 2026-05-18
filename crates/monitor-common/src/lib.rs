@@ -72,6 +72,8 @@ pub struct Task {
     pub summary_updated_at: Option<DateTime<Utc>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub summary_source: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub hidden_at: Option<DateTime<Utc>>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
     pub metadata: serde_json::Value,
@@ -160,6 +162,7 @@ mod tests {
             summary_text: Some("A summary".to_string()),
             summary_updated_at: Some(Utc::now()),
             summary_source: Some("manual".to_string()),
+            hidden_at: None,
             created_at: Utc::now(),
             updated_at: Utc::now(),
             metadata: serde_json::json!({}),
@@ -181,6 +184,7 @@ mod tests {
             summary_text: None,
             summary_updated_at: None,
             summary_source: None,
+            hidden_at: None,
             created_at: Utc::now(),
             updated_at: Utc::now(),
             metadata: serde_json::json!({}),
@@ -189,6 +193,7 @@ mod tests {
         assert!(!json.contains("summary_text"));
         assert!(!json.contains("summary_updated_at"));
         assert!(!json.contains("summary_source"));
+        assert!(!json.contains("hidden_at"));
     }
 
     #[test]

@@ -5,10 +5,17 @@
 {% block content %}
 <div class="page-header">
     <h1>Stream</h1>
-    <div class="stream-tabs" aria-label="Stream view">
-        <a href="/stream?view=chrono" class="{% if view == "chrono" %}active{% endif %}">Chronological</a>
-        <a href="/stream?view=grouped" class="{% if view == "grouped" %}active{% endif %}">Grouped</a>
-        <a href="/stream?view=lanes" class="{% if view == "lanes" %}active{% endif %}">Lanes</a>
+    <div class="stream-controls">
+        <div class="stream-tabs" aria-label="Stream view">
+            <a href="/stream?view=chrono" class="{% if view == "chrono" %}active{% endif %}">Chronological</a>
+            <a href="/stream?view=grouped" class="{% if view == "grouped" %}active{% endif %}">Grouped</a>
+            <a href="/stream?view=lanes" class="{% if view == "lanes" %}active{% endif %}">Lanes</a>
+        </div>
+        {% if sort_by_latest %}
+        <a class="stream-toggle active" href="/stream?view=lanes" aria-pressed="true" title="Lanes are ordered by latest update first">Latest left</a>
+        {% else %}
+        <a class="stream-toggle" href="/stream?view=lanes&sort=latest" aria-pressed="false" title="Order lanes by latest update first">Latest left</a>
+        {% endif %}
     </div>
 </div>
 
@@ -86,9 +93,17 @@
     {% else %}
     <div class="stream-lanes">
         {% for feed in task_feeds %}
-        <section class="stream-lane">
+        <section class="stream-lane" data-stream-lane data-task-id="{{ feed.task.id }}" data-latest-seq="{% match feed.updates.first() %}{% when Some with (first_update) %}{{ first_update.update.seq }}{% when None %}0{% endmatch %}">
             <div class="stream-lane-header">
-                <a href="/tasks/{{ feed.task.id }}">{{ feed.task.name }}</a>
+                <div class="stream-lane-title-row">
+                    <a href="/tasks/{{ feed.task.id }}">{{ feed.task.name }}</a>
+                    <button type="button"
+                            class="stream-pin"
+                            data-pin-task-id="{{ feed.task.id }}"
+                            aria-pressed="false"
+                            aria-label="Pin task"
+                            title="Pin task">📌</button>
+                </div>
                 <span class="badge badge-{{ feed.task.status }}">{{ feed.task.status }}</span>
                 {% match feed.workstream %}
                     {% when Some with (workstream) %}
@@ -229,6 +244,93 @@
         }, 300);
     }
 
+    var pinnedTaskStorageKey = 'monitor.stream.pinnedTaskIds';
+
+    function loadPinnedTaskIds() {
+        try {
+            var parsed = JSON.parse(window.localStorage.getItem(pinnedTaskStorageKey) || '[]');
+            return Array.isArray(parsed) ? parsed.filter(function(id) { return typeof id === 'string'; }) : [];
+        } catch (_err) {
+            return [];
+        }
+    }
+
+    function savePinnedTaskIds(ids) {
+        window.localStorage.setItem(pinnedTaskStorageKey, JSON.stringify(ids));
+    }
+
+    function updatePinButtons(pinnedIds) {
+        document.querySelectorAll('[data-pin-task-id]').forEach(function(button) {
+            var pinned = pinnedIds.indexOf(button.dataset.pinTaskId) !== -1;
+            button.classList.toggle('active', pinned);
+            button.setAttribute('aria-pressed', pinned ? 'true' : 'false');
+            button.setAttribute('aria-label', pinned ? 'Unpin task' : 'Pin task');
+            button.title = pinned ? 'Unpin task' : 'Pin task';
+        });
+    }
+
+    function applyPinnedTaskOrder() {
+        var lanes = document.querySelector('.stream-lanes');
+        if (!lanes) return;
+
+        var pinnedIds = loadPinnedTaskIds();
+        var existingIds = new Set(
+            Array.prototype.map.call(lanes.querySelectorAll('[data-stream-lane]'), function(lane) {
+                return lane.dataset.taskId;
+            })
+        );
+        pinnedIds = pinnedIds.filter(function(id) { return existingIds.has(id); });
+        savePinnedTaskIds(pinnedIds);
+
+        var pinIndex = new Map();
+        pinnedIds.forEach(function(id, index) {
+            pinIndex.set(id, index);
+        });
+
+        var ordered = Array.prototype.map.call(lanes.children, function(lane, index) {
+            return {
+                lane: lane,
+                index: index,
+                taskId: lane.dataset.taskId,
+                latestSeq: Number(lane.dataset.latestSeq || '0'),
+                pinIndex: pinIndex.has(lane.dataset.taskId) ? pinIndex.get(lane.dataset.taskId) : null
+            };
+        });
+
+        ordered.sort(function(a, b) {
+            if (a.pinIndex !== null && b.pinIndex !== null) return a.pinIndex - b.pinIndex;
+            if (a.pinIndex !== null) return -1;
+            if (b.pinIndex !== null) return 1;
+            if (a.latestSeq !== b.latestSeq) return b.latestSeq - a.latestSeq;
+            return a.index - b.index;
+        });
+
+        ordered.forEach(function(item) {
+            lanes.appendChild(item.lane);
+            item.lane.classList.toggle('stream-lane-pinned', item.pinIndex !== null);
+        });
+        updatePinButtons(pinnedIds);
+    }
+
+    document.addEventListener('click', function(event) {
+        var button = event.target.closest('[data-pin-task-id]');
+        if (!button) return;
+
+        event.preventDefault();
+        event.stopPropagation();
+
+        var taskId = button.dataset.pinTaskId;
+        var pinnedIds = loadPinnedTaskIds();
+        var existingIndex = pinnedIds.indexOf(taskId);
+        if (existingIndex === -1) {
+            pinnedIds.push(taskId);
+        } else {
+            pinnedIds.splice(existingIndex, 1);
+        }
+        savePinnedTaskIds(pinnedIds);
+        applyPinnedTaskOrder();
+    });
+
     function shouldIgnoreToggle(target) {
         if (!(target instanceof Element)) return false;
         return target.closest('a, button, input, textarea, select');
@@ -265,6 +367,7 @@
     source.addEventListener('task_updated', scheduleReload);
     source.addEventListener('workstream_created', scheduleReload);
     source.addEventListener('workstream_updated', scheduleReload);
+    applyPinnedTaskOrder();
 })();
 </script>
 {% endblock %}

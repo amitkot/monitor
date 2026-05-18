@@ -387,6 +387,7 @@ async fn run_task(
                 status,
                 summary_text: summary,
                 summary_source,
+                hidden: None,
                 metadata,
             };
             client.patch(&format!("/api/tasks/{id}"), &body).await

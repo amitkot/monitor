@@ -270,6 +270,12 @@
             color: var(--color-text-muted);
             font-size: 0.8rem;
         }
+        .stream-controls {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
         .stream-tabs {
             display: flex;
             gap: 0.25rem;
@@ -289,6 +295,26 @@
         .stream-tabs a.active {
             color: #fff;
             background: var(--color-primary);
+        }
+        .stream-toggle {
+            color: var(--color-text-muted);
+            text-decoration: none;
+            padding: 0.42rem 0.7rem;
+            border: 1px solid var(--color-border);
+            border-radius: 999px;
+            background: var(--color-surface);
+            font-size: 0.82rem;
+            font-weight: 700;
+            white-space: nowrap;
+        }
+        .stream-toggle:hover {
+            border-color: var(--color-primary);
+            color: var(--color-primary);
+        }
+        .stream-toggle.active {
+            border-color: var(--color-primary);
+            background: #cfe2ff;
+            color: var(--color-primary);
         }
         .stream-group {
             background: var(--color-surface);
@@ -328,6 +354,10 @@
             max-height: calc(100vh - 9rem);
             overflow-y: auto;
         }
+        .stream-lane-pinned {
+            border-color: #f2c94c;
+            box-shadow: 0 0 0 1px rgba(242, 201, 76, 0.35);
+        }
         .stream-lane-header {
             display: flex;
             flex-direction: column;
@@ -341,11 +371,43 @@
             padding-bottom: 0.5rem;
             border-bottom: 1px solid var(--color-border);
         }
+        .stream-lane-title-row {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 0.5rem;
+            width: 100%;
+        }
+        .stream-pin {
+            flex: none;
+            width: 1.8rem;
+            height: 1.8rem;
+            padding: 0;
+            border: 1px solid transparent;
+            border-radius: 999px;
+            background: transparent;
+            color: var(--color-text-muted);
+            font-size: 1rem;
+            line-height: 1;
+            opacity: 0.55;
+        }
+        .stream-pin:hover {
+            background: #fff7d6;
+            border-color: #f2c94c;
+            opacity: 1;
+        }
+        .stream-pin.active {
+            background: #fff1b8;
+            border-color: #f2c94c;
+            color: var(--color-text);
+            opacity: 1;
+        }
 
         /* Responsive */
         @media (max-width: 600px) {
             .form-row { flex-direction: column; }
             .task-summary { max-width: 100%; margin-left: 0; }
+            .stream-controls { width: 100%; }
             .stream-tabs { width: 100%; }
             .stream-tabs a { flex: 1; text-align: center; }
         }

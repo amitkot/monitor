@@ -10,12 +10,16 @@ use std::sync::Arc;
 
 use auth::AuthState;
 use config::Config;
+use tracing_subscriber::EnvFilter;
 
 #[tokio::main]
 async fn main() {
     // Init tracing
     tracing_subscriber::fmt()
-        .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
+        .with_env_filter(
+            EnvFilter::try_from_default_env()
+                .unwrap_or_else(|_| EnvFilter::new("monitor_server=info,tower_http=warn")),
+        )
         .init();
 
     // Load config
@@ -26,6 +30,7 @@ async fn main() {
         tokens_configured = config.api_tokens.len(),
         "loaded configuration"
     );
+    tracing::info!("starting monitor-server");
 
     // Init DB
     let pool = db::init_db(&config.database_url).await.unwrap();
@@ -47,7 +52,14 @@ async fn main() {
     let listener = tokio::net::TcpListener::bind(&config.bind_address)
         .await
         .unwrap();
-    tracing::info!("monitor-server listening on {}", config.bind_address);
+    let local_addr = listener.local_addr().unwrap();
+    tracing::info!(
+        bind = %config.bind_address,
+        address = %local_addr,
+        dashboard = %format!("http://{local_addr}/dashboard"),
+        stream = %format!("http://{local_addr}/stream"),
+        "monitor-server listening"
+    );
     axum::serve(listener, app)
         .with_graceful_shutdown(async move {
             shutdown_signal().await;

@@ -49,6 +49,8 @@ pub struct PatchTaskRequest {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub summary_source: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub hidden: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub metadata: Option<serde_json::Value>,
 }
 

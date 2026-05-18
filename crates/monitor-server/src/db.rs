@@ -203,6 +203,7 @@ impl Db {
             summary_text: None,
             summary_updated_at: None,
             summary_source: None,
+            hidden_at: None,
             metadata: req
                 .metadata
                 .clone()
@@ -216,10 +217,14 @@ impl Db {
         &self,
         workstream_id: Option<Uuid>,
         status: Option<TaskStatus>,
+        include_hidden: bool,
     ) -> Result<Vec<Task>> {
         let mut sql = "SELECT * FROM tasks WHERE 1=1".to_string();
         let mut binds: Vec<String> = Vec::new();
 
+        if !include_hidden {
+            sql.push_str(" AND hidden_at IS NULL");
+        }
         if let Some(ws_id) = workstream_id {
             sql.push_str(" AND workstream_id = ?");
             binds.push(ws_id.to_string());
@@ -259,47 +264,64 @@ impl Db {
         let now_str = now.to_rfc3339();
 
         let mut set_clauses = Vec::new();
-        let mut binds: Vec<String> = Vec::new();
+        enum Bind {
+            Str(String),
+            Null,
+        }
+        let mut binds: Vec<Bind> = Vec::new();
 
         if let Some(ref name) = req.name {
             set_clauses.push("name = ?");
-            binds.push(name.clone());
+            binds.push(Bind::Str(name.clone()));
         }
         if let Some(ref workstream_id) = req.workstream_id {
             set_clauses.push("workstream_id = ?");
-            binds.push(workstream_id.to_string());
+            binds.push(Bind::Str(workstream_id.to_string()));
         }
         if let Some(ref status) = req.status {
             set_clauses.push("status = ?");
-            binds.push(task_status_to_str(status).to_string());
+            binds.push(Bind::Str(task_status_to_str(status).to_string()));
         }
         if let Some(ref summary_text) = req.summary_text {
             set_clauses.push("summary_text = ?");
-            binds.push(summary_text.clone());
+            binds.push(Bind::Str(summary_text.clone()));
             set_clauses.push("summary_updated_at = ?");
-            binds.push(now_str.clone());
+            binds.push(Bind::Str(now_str.clone()));
             set_clauses.push("summary_source = ?");
-            binds.push(
+            binds.push(Bind::Str(
                 req.summary_source
                     .as_deref()
                     .unwrap_or("manual")
                     .to_string(),
-            );
+            ));
+        }
+        if let Some(hidden) = req.hidden {
+            set_clauses.push("hidden_at = ?");
+            if hidden {
+                binds.push(Bind::Str(now_str.clone()));
+            } else {
+                binds.push(Bind::Null);
+            }
         }
         if let Some(ref metadata) = req.metadata {
             set_clauses.push("metadata = ?");
-            binds.push(serde_json::to_string(metadata).unwrap_or_else(|_| "{}".to_string()));
+            binds.push(Bind::Str(
+                serde_json::to_string(metadata).unwrap_or_else(|_| "{}".to_string()),
+            ));
         }
 
         set_clauses.push("updated_at = ?");
-        binds.push(now_str);
+        binds.push(Bind::Str(now_str));
 
         let sql = format!("UPDATE tasks SET {} WHERE id = ?", set_clauses.join(", "));
-        binds.push(id_str.clone());
+        binds.push(Bind::Str(id_str.clone()));
 
         let mut query = sqlx::query(&sql);
         for b in &binds {
-            query = query.bind(b);
+            match b {
+                Bind::Str(s) => query = query.bind(s),
+                Bind::Null => query = query.bind(None::<String>),
+            }
         }
         let result = query.execute(&self.pool).await?;
 
@@ -578,6 +600,8 @@ fn row_to_task(row: &SqliteRow) -> Result<Task> {
         .as_deref()
         .map(parse_datetime)
         .transpose()?;
+    let hidden_at_str: Option<String> = row.try_get("hidden_at")?;
+    let hidden_at = hidden_at_str.as_deref().map(parse_datetime).transpose()?;
 
     Ok(Task {
         id,
@@ -587,6 +611,7 @@ fn row_to_task(row: &SqliteRow) -> Result<Task> {
         summary_text: row.try_get("summary_text")?,
         summary_updated_at,
         summary_source: row.try_get("summary_source")?,
+        hidden_at,
         metadata,
         created_at,
         updated_at,
@@ -850,7 +875,7 @@ mod tests {
         assert_eq!(task.status, TaskStatus::Active);
         assert_eq!(task.workstream_id, ws.id);
 
-        let tasks = db.list_tasks(Some(ws.id), None).await.unwrap();
+        let tasks = db.list_tasks(Some(ws.id), None, false).await.unwrap();
         assert_eq!(tasks.len(), 1);
         assert_eq!(tasks[0].id, task.id);
     }
@@ -922,17 +947,24 @@ mod tests {
                 status: Some(TaskStatus::Done),
                 summary_text: None,
                 summary_source: None,
+                hidden: None,
                 metadata: None,
             },
         )
         .await
         .unwrap();
 
-        let active = db.list_tasks(None, Some(TaskStatus::Active)).await.unwrap();
+        let active = db
+            .list_tasks(None, Some(TaskStatus::Active), false)
+            .await
+            .unwrap();
         assert_eq!(active.len(), 1);
         assert_eq!(active[0].name, "Active Task");
 
-        let done = db.list_tasks(None, Some(TaskStatus::Done)).await.unwrap();
+        let done = db
+            .list_tasks(None, Some(TaskStatus::Done), false)
+            .await
+            .unwrap();
         assert_eq!(done.len(), 1);
         assert_eq!(done[0].name, "Done Task");
     }
@@ -967,6 +999,7 @@ mod tests {
                     status: Some(TaskStatus::Blocked),
                     summary_text: Some("Blocked by deps".to_string()),
                     summary_source: Some("agent".to_string()),
+                    hidden: None,
                     metadata: None,
                 },
             )
