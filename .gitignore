@@ -5,3 +5,4 @@ monitor.db
 *.sqlite3
 *-shm
 *-wal
+.antigravitycli/

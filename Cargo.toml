@@ -6,6 +6,11 @@ members = [
 ]
 resolver = "2"
 
+[workspace.package]
+authors = ["Amit Kotlovski"]
+license = "MIT"
+repository = "https://github.com/amitkot/monitor"
+
 [workspace.dependencies]
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
