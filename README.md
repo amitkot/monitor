@@ -292,4 +292,3 @@ Design and implementation references:
 ## License
 
 This project is licensed under the [MIT License](LICENSE).
-
