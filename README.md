@@ -1,17 +1,45 @@
 # Monitor
 
-Local-first development task monitoring system.
+[![CI](https://github.com/amitkot/monitor/actions/workflows/ci.yml/badge.svg)](https://github.com/amitkot/monitor/actions/workflows/ci.yml)
 
-Monitor aggregates task updates from humans, agents, and external systems into a task-centric dashboard and API. It stores durable state in SQLite, exposes REST and SSE endpoints, serves a lightweight web UI, and includes a CLI for scripting and manual updates.
+Local-first task monitoring for development work, humans, and coding agents.
 
-## What It Does
+Monitor aggregates updates from humans, Claude Code hooks, GitHub webhooks, and CLI/API clients into a task-centric dashboard and API. It stores durable state in SQLite, exposes REST and SSE endpoints, serves a lightweight web UI, and includes a Rust CLI for scripting and automation.
 
-- groups work into `Workstreams`
-- tracks actionable `Tasks` inside each workstream
-- stores append-only `Updates` on tasks
-- streams live updates over SSE
-- serves a web dashboard and task detail pages
-- accepts manual updates, Claude hook payloads, and GitHub webhook payloads
+This project explores how engineering teams can track work across humans, coding agents, CI systems, and external tools without depending on a remote SaaS workflow system.
+
+## Status
+
+Early development. The core data model, REST API, SQLite storage, SSE streaming, CLI, and basic web UI are functional. APIs may still change.
+
+## Highlights
+
+- Rust workspace with separate common, server, and CLI crates
+- Axum server with REST API, SSE streaming, and bearer-token auth
+- SQLite persistence using `sqlx`
+- Append-only task updates with durable sequence IDs for replay/resume
+- Local-first workflow with optional strict auth for deployment
+- Source adapters for manual updates, Claude Code hooks, and GitHub webhooks
+- Lightweight web UI using Askama templates
+- CLI designed for scripts, hooks, and agent workflows
+
+## Architecture
+
+```text
+CLI / Hooks / GitHub Webhooks / Manual Updates
+                    |
+                    v
+              Monitor Server
+          Axum + Services + Auth
+                    |
+                    v
+                 SQLite
+                    |
+                    v
+        REST API + SSE + Web Dashboard
+```
+
+Monitor uses an append-only update model. External sources submit updates, the server stores them durably in SQLite, and clients consume current state through REST, live updates through SSE, or the web dashboard.
 
 ## Workspace
 
@@ -85,6 +113,32 @@ List tasks:
 ```bash
 monitor-cli task list
 ```
+
+## Example Use Cases
+
+- Track progress of several coding agents working on independent tasks.
+- Send updates from Claude Code hooks into a shared local dashboard.
+- Attach GitHub webhook updates to a workstream.
+- Use the CLI from scripts to append task updates.
+- Watch task progress live through SSE or the web UI.
+
+## Screenshots
+
+### Dashboard
+
+![Monitor dashboard](docs/screenshots/dashboard.png)
+
+### Task Detail
+
+![Monitor task detail](docs/screenshots/task-detail.png)
+
+### Live Stream
+
+![Monitor live stream in chronological mode](docs/screenshots/live-stream-chronological.jpg)
+
+### Stream Lanes
+
+![Monitor live stream in lane mode](docs/screenshots/live-stream-lanes.png)
 
 ## Configuration
 
